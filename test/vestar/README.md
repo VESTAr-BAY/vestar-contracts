@@ -51,4 +51,4 @@
   ballot pricing / mockUSDT 수납 / 50:50 정산 테스트
 
 - `integration/VESTArEndToEnd.t.sol`
-  Open/Private 실제 happy path와 group 기능까지 포함한 전체 플로우 테스트
+  Open/Private 실제 happy path와 seriesId 기반 상위 이벤트 묶음까지 포함한 전체 플로우 테스트

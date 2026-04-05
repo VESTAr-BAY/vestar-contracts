@@ -54,4 +54,4 @@ election 내부는 lifecycle / eligibility / open / private / settlement 모듈�
   각 모듈을 조합하는 공통 코어 베이스
 
 - `election/VESTArElection.sol`
-  factory가 실제로 배포하는 concrete election 계약. candidate allowlist와 group 메타데이터 관리까지 포함
+  factory가 실제로 배포하는 concrete election 계약. candidate allowlist와 seriesId 기반 이벤트 묶음을 전제로 하는 최종 인스턴스

@@ -31,7 +31,7 @@ The operational rule is simple:
 - odd remainder goes to the organizer
 - verified organizers can create elections with karma `0`
 - unverified organizers require karma tier `>= 1`
-- candidate groups are supported as on-chain metadata and bindings
+- each election carries a shared `seriesId` so multiple category elections can be grouped under one organizer event
 
 ### Contract Architecture
 
@@ -58,8 +58,8 @@ The operational rule is simple:
   encrypted ballot submission, commitment-based private key reveal, post-reveal verification
 - settlement:
   ERC20 collection during voting and final split after result finalization
-- group metadata:
-  organizer-defined groups plus candidate-to-group bindings before the election starts
+- series grouping:
+  multiple elections such as `female solo` / `male solo` can share one `seriesId` like `MAMA 2025`
 
 ### Repository Layout
 
@@ -156,7 +156,7 @@ forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
 - payment uses ERC20, not native ETH
 - the factory deploys clone instances; users should not interact with the implementation address directly
 - private key reveal is limited to platform admin or delegated reveal managers
-- candidate groups are metadata and binding helpers, not a separate tally engine
+- `seriesId` is for grouping multiple elections under one event screen, not for grouping candidates inside one election
 
 ## 한국어
 
@@ -189,7 +189,7 @@ VESTAr는 K-pop 팬을 위한 투명한 투표 시스템을 제공하는 플랫�
 - 홀수 잔차는 organizer 귀속
 - verified organizer는 karma `0`이어도 생성 가능
 - unverified organizer는 karma tier `1` 이상 필요
-- 후보 그룹은 온체인 메타데이터와 binding 형태로 지원
+- 각 election은 shared `seriesId`를 가지며, 여러 종목 election을 하나의 주관사 이벤트 화면으로 묶을 수 있습니다
 
 ### 컨트랙트 구조
 
@@ -216,8 +216,8 @@ VESTAr는 K-pop 팬을 위한 투명한 투표 시스템을 제공하는 플랫�
   암호화 ballot 제출, commitment 기반 private key reveal, reveal 후 공개 검증
 - settlement:
   투표 중 ERC20 수납, 결과 확정 후 최종 분배
-- group metadata:
-  organizer가 투표 시작 전에 그룹 정의와 후보-그룹 연결 설정
+- series grouping:
+  organizer가 여러 종목 election을 만들 때 같은 `seriesId`를 공유시켜 하나의 이벤트 화면으로 묶음
 
 ### 저장소 구조
 
@@ -314,4 +314,4 @@ forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
 - 결제는 native ETH가 아니라 ERC20 기준입니다
 - factory는 clone 인스턴스를 생성하므로 implementation 주소를 직접 쓰면 안 됩니다
 - private key reveal은 platform admin 또는 위임된 reveal manager만 가능합니다
-- candidate group은 메타데이터/분류 기능이며 별도 tally 엔진은 아닙니다
+- `seriesId`는 같은 이벤트 안의 여러 election을 묶기 위한 식별자이며, 후보 분류 기능이 아닙니다

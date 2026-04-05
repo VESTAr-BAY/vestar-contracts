@@ -56,6 +56,7 @@ contract VESTArElection is VESTArElectionCore {
         emit OwnershipTransferred(address(0), platformAdminAddress);
 
         emit ElectionInitialized(
+            config.seriesId,
             config.electionId,
             organizerAddress,
             config.visibilityMode,
@@ -80,72 +81,5 @@ contract VESTArElection is VESTArElectionCore {
 
     function isCandidateHashAllowed(bytes32 candidateHash) external view returns (bool) {
         return _allowedCandidateHash[candidateHash];
-    }
-
-    // 그룹 기능 관련 코드 : organizer/admin이 group 메타데이터를 투표 시작 전에 등록
-    // 예시 : "female-solo", "band", "rookie" 같은 그룹 hash와 metadata URI를 등록해
-    // 프론트가 필터 UI를 만들고 백엔드가 그룹별 결과 페이지를 구성할 수 있게 함
-    function setGroupDefinitions(VESTArTypes.GroupDefinition[] calldata groupDefinitions) external {
-        _requirePlatformAdminOrOrganizer();
-        require(syncState() == VESTArTypes.ElectionState.Scheduled, "VESTAr: already started");
-
-        for (uint256 i = 0; i < groupDefinitions.length; ++i) {
-            VESTArTypes.GroupDefinition calldata groupDefinition = groupDefinitions[i];
-
-            require(groupDefinition.groupKeyHash != bytes32(0), "VESTAr: group key is zero");
-
-            _groupDefinitionByKeyHash[groupDefinition.groupKeyHash] = VESTArTypes.GroupDefinition({
-                groupKeyHash: groupDefinition.groupKeyHash,
-                metadataHash: groupDefinition.metadataHash,
-                metadataURI: groupDefinition.metadataURI,
-                enabled: groupDefinition.enabled
-            });
-
-            emit GroupDefinitionUpdated(
-                _config.electionId,
-                groupDefinition.groupKeyHash,
-                groupDefinition.metadataHash,
-                groupDefinition.metadataURI,
-                groupDefinition.enabled
-            );
-        }
-    }
-
-    // 그룹 기능 관련 코드 : 후보 hash를 특정 group hash에 연결해서 프론트/백엔드가 그룹 필터를 만들 수 있게 함
-    // IU 후보 hash -> female-solo 그룹 hash 로 묶어두면,
-    // 프론트는 후보 카드에 그룹 배지를 붙이고 백엔드는 그룹별 집계를 추가로 만들 수 있음
-    function setCandidateGroups(VESTArTypes.CandidateGroupBinding[] calldata bindings) external {
-        _requirePlatformAdminOrOrganizer();
-        require(syncState() == VESTArTypes.ElectionState.Scheduled, "VESTAr: already started");
-
-        for (uint256 i = 0; i < bindings.length; ++i) {
-            VESTArTypes.CandidateGroupBinding calldata binding = bindings[i];
-
-            require(_allowedCandidateHash[binding.candidateHash], "VESTAr: candidate not allowed");
-            require(
-                _groupDefinitionByKeyHash[binding.groupKeyHash].enabled,
-                "VESTAr: group not enabled"
-            );
-
-            _groupKeyByCandidateHash[binding.candidateHash] = binding.groupKeyHash;
-
-            emit CandidateGroupUpdated(
-                _config.electionId,
-                binding.candidateHash,
-                binding.groupKeyHash
-            );
-        }
-    }
-
-    function getGroupDefinition(bytes32 groupKeyHash)
-        external
-        view
-        returns (VESTArTypes.GroupDefinition memory)
-    {
-        return _groupDefinitionByKeyHash[groupKeyHash];
-    }
-
-    function candidateGroupOf(bytes32 candidateHash) external view returns (bytes32) {
-        return _groupKeyByCandidateHash[candidateHash];
     }
 }

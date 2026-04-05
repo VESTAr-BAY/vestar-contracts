@@ -166,6 +166,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     {
         return VESTArTypes.ElectionConfig({
             electionId: electionId_,
+            seriesId: bytes32("lifecycle-open-series"),
             visibilityMode: VESTArTypes.VisibilityMode.OPEN,
             titleHash: keccak256("Lifecycle Open Vote"),
             candidateManifestHash: keccak256("candidates"),
@@ -197,6 +198,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     ) internal view returns (VESTArTypes.ElectionConfig memory) {
         return VESTArTypes.ElectionConfig({
             electionId: electionId_,
+            seriesId: bytes32("lifecycle-private-series"),
             visibilityMode: VESTArTypes.VisibilityMode.PRIVATE,
             titleHash: keccak256("Lifecycle Private Vote"),
             candidateManifestHash: keccak256("private-candidates"),

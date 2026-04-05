@@ -16,6 +16,7 @@ contract VESTArSettlementModuleHarness is VESTArSettlementModuleImpl {
         address organizerAddress,
         address platformAdminAddress
     ) external {
+        _config.seriesId = bytes32("settlement-harness");
         _config.startAt = 0;
         _config.endAt = 1;
         _config.resultRevealAt = 1;

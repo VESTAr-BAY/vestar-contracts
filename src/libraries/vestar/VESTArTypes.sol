@@ -57,6 +57,9 @@ library VESTArTypes {
     // ElectionConfig는 투표를 만들 때 필요한 핵심 설정 묶음
     struct ElectionConfig {
         bytes32 electionId;
+        // seriesId: "MAMA 2025" 같은 상위 이벤트/시리즈 식별자
+        // 예: female solo, male solo election이 같은 seriesId를 공유
+        bytes32 seriesId;
         VisibilityMode visibilityMode;
         // 제목 자체 대신 해시를 둘 수도 있어서 bytes32 사용
         bytes32 titleHash;
@@ -106,24 +109,6 @@ library VESTArTypes {
         uint256 totalValidVotes;
         // 무효표 수
         uint256 totalInvalidVotes;
-    }
-
-    // 그룹 기능 관련 코드 : 후보를 묶는 group의 메타데이터를 온체인에서 읽기 쉽게 표현
-    struct GroupDefinition {
-        // groupKeyHash: "female-solo" 같은 정규화 그룹 키의 해시
-        bytes32 groupKeyHash;
-        // metadataHash: 그룹 설명 JSON / 이미지 manifest 무결성 검증용 해시
-        bytes32 metadataHash;
-        // metadataURI: 그룹 설명이나 배너를 가져올 URI
-        string metadataURI;
-        // enabled: 이 그룹이 현재 활성 상태인지 여부
-        bool enabled;
-    }
-
-    // 그룹 기능 관련 코드 : 특정 후보가 어느 group에 속하는지 연결할 때 쓰는 구조체
-    struct CandidateGroupBinding {
-        bytes32 candidateHash;
-        bytes32 groupKeyHash;
     }
 
     // 투표권 사용량 관련 코드 : 한 유저가 특정 단위 기간에서 ballot을 몇 번 썼는지 표현

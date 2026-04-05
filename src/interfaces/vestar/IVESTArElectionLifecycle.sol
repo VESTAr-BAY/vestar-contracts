@@ -8,6 +8,7 @@ import {VESTArTypes} from "../../libraries/vestar/VESTArTypes.sol";
 interface IVESTArElectionLifecycle {
     // election이 처음 준비될 때 찍는 로그
     event ElectionInitialized(
+        bytes32 indexed seriesId,
         bytes32 indexed electionId,
         address indexed organizer,
         VESTArTypes.VisibilityMode visibilityMode,
@@ -42,6 +43,9 @@ interface IVESTArElectionLifecycle {
 
     // electionId는 bytes32 같은 고정 길이 식별자로 자주 사용
     function electionId() external view returns (bytes32);
+
+    // 여러 election을 같은 이벤트 화면에 묶기 위한 상위 series 식별자
+    function seriesId() external view returns (bytes32);
 
     // organizer는 이 election을 만든 주최자 주소
     function organizer() external view returns (address);
