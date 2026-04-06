@@ -13,6 +13,11 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         return _config.electionId;
     }
 
+    // 상태 조회 관련 코드 : 같은 이벤트 화면에 묶이는 상위 series 식별자
+    function seriesId() public view virtual returns (bytes32) {
+        return _config.seriesId;
+    }
+
     // 상태 조회 관련 코드 : organizer 주소
     function organizer() public view virtual returns (address) {
         return _organizer;

@@ -24,6 +24,7 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
     uint256 internal _totalElections;
 
     mapping(bytes32 electionId => address electionAddress) internal _electionById;
+    mapping(bytes32 seriesId => bytes32[] electionIds) internal _electionIdsBySeriesId;
 
     constructor(
         address initialOwner,
@@ -68,6 +69,10 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
         return _totalElections;
     }
 
+    function totalElectionsInSeries(bytes32 seriesId) public view returns (uint256) {
+        return _electionIdsBySeriesId[seriesId].length;
+    }
+
     // admin 설정 관련 코드 : 운영 중 organizer registry 주소를 바꿔야 할 때 owner가 갱신
     function setOrganizerRegistry(address organizerRegistryAddress) external onlyOwner {
         _organizerRegistry = organizerRegistryAddress;
@@ -96,6 +101,7 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
         // 2) factory가 organizer registry + karma registry를 읽어 생성 자격 확인
         // 3) 통과하면 새 election 계약을 배포하고 initialize를 호출
         // 4) 프론트/백은 ElectionCreated 이벤트를 보고 새 election 주소를 인덱싱
+        require(config.seriesId != bytes32(0), "VESTAr: seriesId is zero");
         require(_electionById[config.electionId] == address(0), "VESTAr: election exists");
 
         bool verifiedSnapshot = IVESTArOrganizerRegistry(_organizerRegistry).isVerified(msg.sender);
@@ -125,12 +131,14 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
 
         electionAddress = address(election);
         _electionById[config.electionId] = electionAddress;
+        _electionIdsBySeriesId[config.seriesId].push(config.electionId);
         _totalElections += 1;
 
         emit ElectionCreated(
+            config.seriesId,
             config.electionId,
-            electionAddress,
             msg.sender,
+            electionAddress,
             config.visibilityMode,
             verifiedSnapshot,
             config.paymentMode,
@@ -140,5 +148,26 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
 
     function getElection(bytes32 electionId) public view returns (address electionAddress) {
         return _electionById[electionId];
+    }
+
+    function getSeriesElectionIds(bytes32 seriesId)
+        public
+        view
+        returns (bytes32[] memory electionIds)
+    {
+        return _electionIdsBySeriesId[seriesId];
+    }
+
+    function getSeriesElectionAddresses(bytes32 seriesId)
+        public
+        view
+        returns (address[] memory electionAddresses)
+    {
+        bytes32[] storage electionIds = _electionIdsBySeriesId[seriesId];
+        electionAddresses = new address[](electionIds.length);
+
+        for (uint256 i = 0; i < electionIds.length; ++i) {
+            electionAddresses[i] = _electionById[electionIds[i]];
+        }
     }
 }

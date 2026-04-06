@@ -19,6 +19,7 @@ contract VESTArPrivateVoteModuleHarness is VESTArPrivateVoteModuleImpl {
         address karmaRegistryAddress,
         uint8 minKarmaTier_
     ) external {
+        _config.seriesId = bytes32("private-vote-harness");
         _config.visibilityMode = VESTArTypes.VisibilityMode.PRIVATE;
         _config.startAt = 0;
         _config.endAt = type(uint64).max - 1;

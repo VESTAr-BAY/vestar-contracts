@@ -9,9 +9,10 @@ import {IVESTArAdminControl} from "./IVESTArAdminControl.sol";
 interface IVESTArElectionFactory is IVESTArAdminControl {
     // create 시점 핵심 정보를 로그로 남겨 인덱서가 쉽게 추적하도록 함
     event ElectionCreated(
+        bytes32 indexed seriesId,
         bytes32 indexed electionId,
-        address indexed electionAddress,
         address indexed organizer,
+        address electionAddress,
         VESTArTypes.VisibilityMode visibilityMode,
         bool organizerVerifiedSnapshot,
         VESTArTypes.PaymentMode paymentMode,
@@ -48,9 +49,24 @@ interface IVESTArElectionFactory is IVESTArAdminControl {
     // 지금까지 생성된 총 election 수
     function totalElections() external view returns (uint256);
 
+    // 같은 상위 이벤트/시리즈에 속한 election 개수
+    function totalElectionsInSeries(bytes32 seriesId) external view returns (uint256);
+
     // config struct 하나를 받아 새 election을 생성
     function createElection(VESTArTypes.ElectionConfig calldata config) external returns (address electionAddress);
 
     // electionId -> election address 매핑 조회
     function getElection(bytes32 electionId) external view returns (address electionAddress);
+
+    // 같은 seriesId를 공유하는 electionId 목록 조회
+    function getSeriesElectionIds(bytes32 seriesId)
+        external
+        view
+        returns (bytes32[] memory electionIds);
+
+    // 같은 seriesId를 공유하는 election address 목록 조회
+    function getSeriesElectionAddresses(bytes32 seriesId)
+        external
+        view
+        returns (address[] memory electionAddresses);
 }

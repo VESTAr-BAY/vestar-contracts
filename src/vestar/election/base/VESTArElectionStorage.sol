@@ -38,12 +38,11 @@ abstract contract VESTArElectionStorage {
     mapping(address => mapping(uint48 => uint32)) internal _submittedBallotsByPeriod;
     mapping(bytes32 => uint256) internal _openVoteCountByCandidateHash;
     mapping(bytes32 => bool) internal _allowedCandidateHash;
-    mapping(bytes32 => VESTArTypes.GroupDefinition) internal _groupDefinitionByKeyHash;
-    mapping(bytes32 => bytes32) internal _groupKeyByCandidateHash;
     mapping(address => bool) internal _revealManagers;
 
     // 설정 검증 관련 코드 : 새 정책에 맞지 않는 election config를 초기 단계에서 막기 위한 내부 helper
     function _validateElectionConfig() internal view {
+        require(_config.seriesId != bytes32(0), "VESTAr: seriesId is zero");
         require(_config.startAt < _config.endAt, "VESTAr: invalid time range");
         require(_config.resultRevealAt >= _config.endAt, "VESTAr: invalid reveal time");
 

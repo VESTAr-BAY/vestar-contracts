@@ -31,14 +31,16 @@ contract VESTArEndToEndTest is VESTArTestBase {
         organizerRegistry.setVerification(organizer, true, 100, 0);
     }
 
-    function testOpenElectionEndToEndWithGroupsAndSettlement() public {
+    function testOpenElectionEndToEndWithSeriesAndSettlement() public {
         // 실제 사례 :
-        // 1) verified organizer가 Open election 생성
-        // 2) 투표 시작 전 candidate allowlist와 group 메타데이터를 등록
+        // 1) verified organizer가 "MAMA 2025" series 아래 "female solo" election 생성
+        // 2) 투표 시작 전 candidate allowlist를 등록
         // 3) 유저가 ["IU", "ParkHyoShin"] 다중 선택 ballot 1개를 제출
         // 4) 종료 후 organizer가 결과를 finalize하고 수익을 50:50 정산
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
             bytes32("open-e2e"),
+            bytes32("mama-2025"),
+            keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             25_001
@@ -51,36 +53,15 @@ contract VESTArEndToEndTest is VESTArTestBase {
 
         bytes32 iuHash = keccak256(bytes("IU"));
         bytes32 parkHash = keccak256(bytes("ParkHyoShin"));
-        bytes32 femaleSoloGroupHash = keccak256(bytes("female-solo"));
 
         bytes32[] memory candidateHashes = new bytes32[](2);
         candidateHashes[0] = iuHash;
         candidateHashes[1] = parkHash;
 
-        VESTArTypes.GroupDefinition[] memory groups = new VESTArTypes.GroupDefinition[](1);
-        groups[0] = VESTArTypes.GroupDefinition({
-            groupKeyHash: femaleSoloGroupHash,
-            metadataHash: keccak256("female-solo-group"),
-            metadataURI: "ipfs://groups/female-solo",
-            enabled: true
-        });
-
-        VESTArTypes.CandidateGroupBinding[] memory bindings = new VESTArTypes.CandidateGroupBinding[](1);
-        bindings[0] = VESTArTypes.CandidateGroupBinding({
-            candidateHash: iuHash,
-            groupKeyHash: femaleSoloGroupHash
-        });
-
         vm.prank(organizer);
         election.setCandidateAllowlist(candidateHashes, true);
 
-        vm.prank(organizer);
-        election.setGroupDefinitions(groups);
-
-        vm.prank(organizer);
-        election.setCandidateGroups(bindings);
-
-        assertEq(election.candidateGroupOf(iuHash), femaleSoloGroupHash);
+        assertEq(election.seriesId(), bytes32("mama-2025"));
         assertTrue(election.isCandidateHashAllowed(iuHash));
 
         mockKarmaRegistry.setTier(voter, 1);
@@ -115,65 +96,57 @@ contract VESTArEndToEndTest is VESTArTestBase {
         assertTrue(election.getSettlementSummary().settled);
     }
 
-    function testFrontendCanReadGroupMetadataForCandidateFilterUi() public {
+    function testFrontendCanReadSeriesElectionListForSingleEventScreen() public {
         // 실제 사례 :
-        // 프론트는 투표 시작 전에 group 정의와 candidate-group 연결을 읽어서
-        // "솔로", "밴드", "남성", "여성" 같은 필터 UI를 구성해야 함
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("group-read"),
+        // 프론트는 "MAMA 2025" 같은 상위 이벤트 화면에서
+        // female solo / male solo election을 한 번에 그리기 위해 shared seriesId를 기준으로 목록을 읽음
+        bytes32 mamaSeriesId = bytes32("mama-2025");
+
+        VESTArTypes.ElectionConfig memory femaleSoloConfig = _buildOpenConfig(
+            bytes32("mama-female-solo"),
+            mamaSeriesId,
+            keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             25_001
         );
 
-        vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        VESTArTypes.ElectionConfig memory maleSoloConfig = _buildOpenConfig(
+            bytes32("mama-male-solo"),
+            mamaSeriesId,
+            keccak256("male-solo"),
+            uint64(block.timestamp + 1 days),
+            uint64(block.timestamp + 2 days),
+            25_001
+        );
 
-        VESTArElection election = VESTArElection(electionAddress);
+        vm.startPrank(organizer);
+        address femaleSoloElection = electionFactory.createElection(femaleSoloConfig);
+        address maleSoloElection = electionFactory.createElection(maleSoloConfig);
+        vm.stopPrank();
 
-        bytes32 iuHash = keccak256(bytes("IU"));
-        bytes32 femaleSoloGroupHash = keccak256(bytes("female-solo"));
+        bytes32[] memory electionIds = electionFactory.getSeriesElectionIds(mamaSeriesId);
+        address[] memory electionAddresses = electionFactory.getSeriesElectionAddresses(mamaSeriesId);
 
-        bytes32[] memory candidateHashes = new bytes32[](1);
-        candidateHashes[0] = iuHash;
-
-        VESTArTypes.GroupDefinition[] memory groups = new VESTArTypes.GroupDefinition[](1);
-        groups[0] = VESTArTypes.GroupDefinition({
-            groupKeyHash: femaleSoloGroupHash,
-            metadataHash: keccak256("female-solo-group"),
-            metadataURI: "ipfs://groups/female-solo",
-            enabled: true
-        });
-
-        VESTArTypes.CandidateGroupBinding[] memory bindings = new VESTArTypes.CandidateGroupBinding[](1);
-        bindings[0] = VESTArTypes.CandidateGroupBinding({
-            candidateHash: iuHash,
-            groupKeyHash: femaleSoloGroupHash
-        });
-
-        vm.prank(organizer);
-        election.setCandidateAllowlist(candidateHashes, true);
-
-        vm.prank(organizer);
-        election.setGroupDefinitions(groups);
-
-        vm.prank(organizer);
-        election.setCandidateGroups(bindings);
-
-        VESTArTypes.GroupDefinition memory group = election.getGroupDefinition(femaleSoloGroupHash);
-
-        assertEq(group.groupKeyHash, femaleSoloGroupHash);
-        assertEq(group.metadataURI, "ipfs://groups/female-solo");
-        assertTrue(group.enabled);
-        assertEq(election.candidateGroupOf(iuHash), femaleSoloGroupHash);
+        assertEq(electionFactory.totalElectionsInSeries(mamaSeriesId), 2);
+        assertEq(electionIds.length, 2);
+        assertEq(electionAddresses.length, 2);
+        assertEq(electionIds[0], femaleSoloConfig.electionId);
+        assertEq(electionIds[1], maleSoloConfig.electionId);
+        assertEq(electionAddresses[0], femaleSoloElection);
+        assertEq(electionAddresses[1], maleSoloElection);
+        assertEq(VESTArElection(femaleSoloElection).seriesId(), mamaSeriesId);
+        assertEq(VESTArElection(maleSoloElection).seriesId(), mamaSeriesId);
     }
 
     function testOrganizerCannotChangeCandidateSetupAfterElectionStarts() public {
         // 실제 사례 :
-        // 주최자는 시작 전에 후보/그룹을 준비할 수 있지만,
+        // 주최자는 시작 전에 후보 목록을 준비할 수 있지만,
         // 투표가 열린 뒤에는 프론트/백엔드 집계 기준이 흔들리지 않게 수정이 막혀야 함
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
             bytes32("lock-after-start"),
+            bytes32("mama-2025"),
+            keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             25_001
@@ -204,6 +177,8 @@ contract VESTArEndToEndTest is VESTArTestBase {
 
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
             bytes32("private-e2e"),
+            bytes32("mma-2025"),
+            keccak256("winner-vote"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             uint64(block.timestamp + 3 days),
@@ -248,13 +223,15 @@ contract VESTArEndToEndTest is VESTArTestBase {
         assertEq(mockUSDT.balanceOf(organizer), FULL_PRICE_PER_BALLOT / 2);
     }
 
-    function testFrontendCanReadConfigAndGroupMetadataAfterOrganizerSetup() public {
+    function testFrontendCanReadConfigAndSharedSeriesIdAfterOrganizerSetup() public {
         // 실제 사례 :
-        // 1) organizer가 투표를 만들고 후보/그룹 메타데이터를 등록
-        // 2) 프론트는 getElectionConfig / getGroupDefinition / candidateGroupOf를 읽어서
-        //    "어떤 화면을 그릴지"와 "후보가 어느 그룹에 속하는지"를 바로 구성함
+        // 1) organizer가 "MAMA 2025" series 아래 "female solo" election을 만든다
+        // 2) 프론트는 getElectionConfig를 읽어서 shared seriesId와 category titleHash를 함께 가져간다
+        bytes32 mamaSeriesId = bytes32("mama-2025");
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
             bytes32("front-read"),
+            mamaSeriesId,
+            keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             25_001
@@ -266,56 +243,35 @@ contract VESTArEndToEndTest is VESTArTestBase {
         VESTArElection election = VESTArElection(electionAddress);
 
         bytes32 iuHash = keccak256(bytes("IU"));
-        bytes32 womenGroupHash = keccak256(bytes("women-solo"));
 
         bytes32[] memory candidateHashes = new bytes32[](1);
         candidateHashes[0] = iuHash;
 
-        VESTArTypes.GroupDefinition[] memory groups = new VESTArTypes.GroupDefinition[](1);
-        groups[0] = VESTArTypes.GroupDefinition({
-            groupKeyHash: womenGroupHash,
-            metadataHash: keccak256("women-solo-group"),
-            metadataURI: "ipfs://groups/women-solo",
-            enabled: true
-        });
-
-        VESTArTypes.CandidateGroupBinding[] memory bindings = new VESTArTypes.CandidateGroupBinding[](1);
-        bindings[0] = VESTArTypes.CandidateGroupBinding({
-            candidateHash: iuHash,
-            groupKeyHash: womenGroupHash
-        });
-
         vm.prank(organizer);
         election.setCandidateAllowlist(candidateHashes, true);
 
-        vm.prank(organizer);
-        election.setGroupDefinitions(groups);
-
-        vm.prank(organizer);
-        election.setCandidateGroups(bindings);
-
         VESTArTypes.ElectionConfig memory storedConfig = election.getElectionConfig();
-        VESTArTypes.GroupDefinition memory storedGroup = election.getGroupDefinition(womenGroupHash);
 
         assertEq(storedConfig.electionId, bytes32("front-read"));
+        assertEq(storedConfig.seriesId, mamaSeriesId);
+        assertEq(storedConfig.titleHash, keccak256("female-solo"));
         assertEq(storedConfig.candidateManifestURI, "ipfs://open-candidates");
         assertTrue(election.isCandidateHashAllowed(iuHash));
-        assertEq(election.candidateGroupOf(iuHash), womenGroupHash);
-        assertEq(storedGroup.groupKeyHash, womenGroupHash);
-        assertEq(storedGroup.metadataURI, "ipfs://groups/women-solo");
-        assertTrue(storedGroup.enabled);
     }
 
     function _buildOpenConfig(
         bytes32 electionId_,
+        bytes32 seriesId_,
+        bytes32 titleHash_,
         uint64 startAt_,
         uint64 endAt_,
         uint256 costPerBallot_
     ) internal view returns (VESTArTypes.ElectionConfig memory) {
         return VESTArTypes.ElectionConfig({
             electionId: electionId_,
+            seriesId: seriesId_,
             visibilityMode: VESTArTypes.VisibilityMode.OPEN,
-            titleHash: keccak256("EndToEnd Open Vote"),
+            titleHash: titleHash_,
             candidateManifestHash: keccak256("open-candidates"),
             candidateManifestURI: "ipfs://open-candidates",
             startAt: startAt_,
@@ -338,6 +294,8 @@ contract VESTArEndToEndTest is VESTArTestBase {
 
     function _buildPrivateConfig(
         bytes32 electionId_,
+        bytes32 seriesId_,
+        bytes32 titleHash_,
         uint64 startAt_,
         uint64 endAt_,
         uint64 resultRevealAt_,
@@ -346,8 +304,9 @@ contract VESTArEndToEndTest is VESTArTestBase {
     ) internal view returns (VESTArTypes.ElectionConfig memory) {
         return VESTArTypes.ElectionConfig({
             electionId: electionId_,
+            seriesId: seriesId_,
             visibilityMode: VESTArTypes.VisibilityMode.PRIVATE,
-            titleHash: keccak256("EndToEnd Private Vote"),
+            titleHash: titleHash_,
             candidateManifestHash: keccak256("private-candidates"),
             candidateManifestURI: "ipfs://private-candidates",
             startAt: startAt_,

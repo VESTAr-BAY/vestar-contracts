@@ -18,6 +18,7 @@ contract VESTArOpenVoteHarness is VESTArOpenVoteModuleImpl {
         uint8 minKarmaTier_,
         address karmaRegistryAddress
     ) external {
+        _config.seriesId = bytes32("open-vote-harness");
         _config.visibilityMode = VESTArTypes.VisibilityMode.OPEN;
         _config.startAt = 0;
         _config.endAt = type(uint64).max - 1;
