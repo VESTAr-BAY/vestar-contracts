@@ -66,6 +66,29 @@ contract VESTArElection is VESTArElectionCore {
         );
     }
 
+    // 메타데이터 수정 관련 코드 : organizer/admin이 시작 전에 제목/후보 manifest 오탈자를 고칠 수 있게 함
+    // 예시 : titleHash만 바뀌는 사소한 오탈자 수정이어도, 프론트/백엔드가 같은 스냅샷을 읽게
+    // titleHash + candidateManifest(hash/URI)를 한 번에 갱신하고 이벤트로 남김
+    function updateElectionMetadata(
+        bytes32 newTitleHash,
+        bytes32 newCandidateManifestHash,
+        string calldata newCandidateManifestURI
+    ) external {
+        _requirePlatformAdminOrOrganizer();
+        require(syncState() == VESTArTypes.ElectionState.Scheduled, "VESTAr: already started");
+        require(newTitleHash != bytes32(0), "VESTAr: title hash is zero");
+        require(newCandidateManifestHash != bytes32(0), "VESTAr: candidate manifest hash is zero");
+        require(bytes(newCandidateManifestURI).length > 0, "VESTAr: candidate manifest URI empty");
+
+        _config.titleHash = newTitleHash;
+        _config.candidateManifestHash = newCandidateManifestHash;
+        _config.candidateManifestURI = newCandidateManifestURI;
+
+        emit ElectionMetadataUpdated(
+            _config.electionId, newTitleHash, newCandidateManifestHash, newCandidateManifestURI
+        );
+    }
+
     // 후보 등록 관련 코드 : organizer/admin이 투표 시작 전에 후보 hash allowlist를 세팅
     // 예시 : "IU", "ParkHyoShin" 문자열 자체를 저장하지 않고 keccak256 hash 목록만 올려서
     // 프론트/백엔드는 manifest와 같은 hash 규칙을 써서 허용 후보인지 맞춰 볼 수 있음

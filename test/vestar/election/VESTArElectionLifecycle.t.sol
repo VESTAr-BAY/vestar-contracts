@@ -17,9 +17,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
 
     function testScheduledToActiveStateTransitionFollowsTime() public {
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("open-lifecycle"),
-            uint64(block.timestamp + 1 days),
-            uint64(block.timestamp + 3 days)
+            bytes32("open-lifecycle"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
         );
 
         election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
@@ -34,9 +32,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
 
     function testOrganizerCanCancelBeforeStart() public {
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("cancel-before-start"),
-            uint64(block.timestamp + 1 days),
-            uint64(block.timestamp + 2 days)
+            bytes32("cancel-before-start"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 2 days)
         );
 
         election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
@@ -138,13 +134,47 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         );
     }
 
+    function testOrganizerCanUpdateElectionMetadataBeforeStart() public {
+        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
+            bytes32("metadata-edit"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
+        );
+
+        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+
+        bytes32 newTitleHash = keccak256("Lifecycle Open Vote Fixed");
+        bytes32 newCandidateManifestHash = keccak256("candidates-fixed");
+        string memory newCandidateManifestURI = "ipfs://candidates-fixed";
+
+        vm.prank(organizer);
+        election.updateElectionMetadata(newTitleHash, newCandidateManifestHash, newCandidateManifestURI);
+
+        VESTArTypes.ElectionConfig memory updatedConfig = election.getElectionConfig();
+        assertEq(updatedConfig.titleHash, newTitleHash);
+        assertEq(updatedConfig.candidateManifestHash, newCandidateManifestHash);
+        assertEq(updatedConfig.candidateManifestURI, newCandidateManifestURI);
+    }
+
+    function testOrganizerCannotUpdateElectionMetadataAfterStart() public {
+        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
+            bytes32("metadata-lock"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
+        );
+
+        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+
+        vm.warp(block.timestamp + 1 days);
+
+        vm.prank(organizer);
+        vm.expectRevert("VESTAr: already started");
+        election.updateElectionMetadata(
+            keccak256("Lifecycle Open Vote Fixed"), keccak256("candidates-fixed"), "ipfs://candidates-fixed"
+        );
+    }
+
     function testOrganizerCannotEditCandidateAllowlistAfterStart() public {
         // 실제 사례 : organizer는 시작 전까지만 후보 목록을 확정하고,
         // 투표가 열린 뒤에는 프론트/백 기준점이 흔들리지 않도록 수정이 막혀야 함
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("allowlist-lock"),
-            uint64(block.timestamp + 1 days),
-            uint64(block.timestamp + 3 days)
+            bytes32("allowlist-lock"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
         );
 
         election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
