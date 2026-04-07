@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {MockUSDT} from "../src/mocks/MockUSDT.sol";
+import {StatusTestnetConfig} from "../src/config/StatusTestnetConfig.sol";
 import {VESTArElection} from "../src/vestar/election/VESTArElection.sol";
 import {VESTArElectionFactory} from "../src/vestar/factory/VESTArElectionFactory.sol";
 import {VESTArKarmaRegistry} from "../src/vestar/registry/VESTArKarmaRegistry.sol";
@@ -34,11 +35,11 @@ contract DeployVESTArStackScript is Script {
 
         // 환경변수 관련 코드 :
         // PLATFORM_TREASURY를 따로 안 넣으면 배포자 주소를 임시 treasury로 사용
-        // Status Karma 주소를 아직 모르면 0 주소로 시작하고, 나중에 owner가 registry를 갱신 가능
+        // Status Karma 원본 주소는 env로 덮어쓸 수 있고, 없으면 testnet 기본값을 사용
         address initialOwner = vm.envOr("INITIAL_OWNER", deployer);
         address platformTreasury = vm.envOr("PLATFORM_TREASURY", deployer);
-        address statusKarma = vm.envOr("STATUS_KARMA", address(0));
-        address statusKarmaTiers = vm.envOr("STATUS_KARMA_TIERS", address(0));
+        address statusKarma = vm.envOr("STATUS_KARMA", StatusTestnetConfig.KARMA);
+        address statusKarmaTiers = vm.envOr("STATUS_KARMA_TIERS", StatusTestnetConfig.KARMA_TIERS);
         bool deployMockUsdt = vm.envOr("DEPLOY_MOCK_USDT", true);
 
         vm.startBroadcast(privateKey);
