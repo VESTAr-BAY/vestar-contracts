@@ -20,6 +20,7 @@ abstract contract VESTArElectionStorage {
     uint256 internal constant UNLIMITED_PAID_COST_AMOUNT = 66_000;
 
     VESTArTypes.ElectionConfig internal _config;
+    bytes32 internal _electionId;
     VESTArTypes.ResultSummary internal _resultSummary;
     VESTArTypes.CancellationSummary internal _cancellationSummary;
     VESTArTypes.SettlementSummary internal _settlementSummary;
@@ -239,10 +240,7 @@ abstract contract VESTArElectionStorage {
 
     // 관리자 권한 관련 코드 : platform admin 또는 organizer 둘 다 호출 가능하게 허용
     function _requirePlatformAdminOrOrganizer() internal view {
-        require(
-            msg.sender == _platformAdmin || msg.sender == _organizer,
-            "VESTAr: only admin or organizer"
-        );
+        require(msg.sender == _platformAdmin || msg.sender == _organizer, "VESTAr: only admin or organizer");
     }
 
     // key reveal 권한 관련 코드 : platform admin은 항상 가능, 내부 팀 관리자는 별도 whitelist로 위임 가능
@@ -265,10 +263,7 @@ abstract contract VESTArElectionStorage {
         require(candidateKeys.length > 0, "VESTAr: empty selection");
 
         if (_config.allowMultipleChoice) {
-            require(
-                candidateKeys.length <= _config.maxSelectionsPerSubmission,
-                "VESTAr: too many selections"
-            );
+            require(candidateKeys.length <= _config.maxSelectionsPerSubmission, "VESTAr: too many selections");
         } else {
             require(candidateKeys.length == 1, "VESTAr: single choice only");
         }

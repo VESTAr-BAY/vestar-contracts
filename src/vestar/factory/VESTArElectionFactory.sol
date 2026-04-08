@@ -23,6 +23,7 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
     address internal _electionImplementation;
     uint256 internal _totalElections;
 
+    mapping(address organizer => uint256 nonce) internal _nextElectionNonceByOrganizer;
     mapping(bytes32 electionId => address electionAddress) internal _electionById;
     mapping(bytes32 seriesId => bytes32[] electionIds) internal _electionIdsBySeriesId;
 
@@ -73,6 +74,32 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
         return _electionIdsBySeriesId[seriesId].length;
     }
 
+    function nextElectionNonce(address organizer) public view returns (uint256) {
+        return _nextElectionNonceByOrganizer[organizer];
+    }
+
+    function previewNextElectionId(address organizer, bytes32 seriesId, bytes32 titleHash, uint64 startAt, uint64 endAt)
+        public
+        view
+        returns (bytes32 electionId)
+    {
+        return
+            computeElectionId(organizer, seriesId, titleHash, startAt, endAt, _nextElectionNonceByOrganizer[organizer]);
+    }
+
+    function computeElectionId(
+        address organizer,
+        bytes32 seriesId,
+        bytes32 titleHash,
+        uint64 startAt,
+        uint64 endAt,
+        uint256 organizerNonce
+    ) public view returns (bytes32 electionId) {
+        return keccak256(
+            abi.encode(address(this), block.chainid, organizer, seriesId, titleHash, startAt, endAt, organizerNonce)
+        );
+    }
+
     // admin 설정 관련 코드 : 운영 중 organizer registry 주소를 바꿔야 할 때 owner가 갱신
     function setOrganizerRegistry(address organizerRegistryAddress) external onlyOwner {
         _organizerRegistry = organizerRegistryAddress;
@@ -102,7 +129,6 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
         // 3) 통과하면 새 election 계약을 배포하고 initialize를 호출
         // 4) 프론트/백은 ElectionCreated 이벤트를 보고 새 election 주소를 인덱싱
         require(config.seriesId != bytes32(0), "VESTAr: seriesId is zero");
-        require(_electionById[config.electionId] == address(0), "VESTAr: election exists");
 
         bool verifiedSnapshot = IVESTArOrganizerRegistry(_organizerRegistry).isVerified(msg.sender);
         uint8 organizerTier = 0;
@@ -116,27 +142,29 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
             "VESTAr: organizer not eligible"
         );
 
+        uint256 organizerNonce = _nextElectionNonceByOrganizer[msg.sender];
+        bytes32 generatedElectionId = computeElectionId(
+            msg.sender, config.seriesId, config.titleHash, config.startAt, config.endAt, organizerNonce
+        );
+        require(_electionById[generatedElectionId] == address(0), "VESTAr: election exists");
+
         // 배포 관련 코드 : MVP는 clone 대신 new로 직접 배포해서 초기 학습 난도를 낮춤
         // 배포 관련 코드 : 구현체를 직접 다시 배포하지 않고 clone을 찍으면
         // factory 자체의 initcode/runtime이 작아져 Status RPC의 oversized data 문제를 줄이기 쉬움
         VESTArElection election = VESTArElection(_electionImplementation.clone());
         election.initialize(
-            config,
-            msg.sender,
-            verifiedSnapshot,
-            _karmaRegistry,
-            owner,
-            _platformTreasury
+            generatedElectionId, config, msg.sender, verifiedSnapshot, _karmaRegistry, owner, _platformTreasury
         );
 
         electionAddress = address(election);
-        _electionById[config.electionId] = electionAddress;
-        _electionIdsBySeriesId[config.seriesId].push(config.electionId);
+        _nextElectionNonceByOrganizer[msg.sender] = organizerNonce + 1;
+        _electionById[generatedElectionId] = electionAddress;
+        _electionIdsBySeriesId[config.seriesId].push(generatedElectionId);
         _totalElections += 1;
 
         emit ElectionCreated(
             config.seriesId,
-            config.electionId,
+            generatedElectionId,
             msg.sender,
             electionAddress,
             config.visibilityMode,
@@ -150,19 +178,11 @@ contract VESTArElectionFactory is VESTArOwnablePausable, IVESTArElectionFactory 
         return _electionById[electionId];
     }
 
-    function getSeriesElectionIds(bytes32 seriesId)
-        public
-        view
-        returns (bytes32[] memory electionIds)
-    {
+    function getSeriesElectionIds(bytes32 seriesId) public view returns (bytes32[] memory electionIds) {
         return _electionIdsBySeriesId[seriesId];
     }
 
-    function getSeriesElectionAddresses(bytes32 seriesId)
-        public
-        view
-        returns (address[] memory electionAddresses)
-    {
+    function getSeriesElectionAddresses(bytes32 seriesId) public view returns (address[] memory electionAddresses) {
         bytes32[] storage electionIds = _electionIdsBySeriesId[seriesId];
         electionAddresses = new address[](electionIds.length);
 

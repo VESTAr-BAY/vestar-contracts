@@ -16,11 +16,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     }
 
     function testScheduledToActiveStateTransitionFollowsTime() public {
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("open-lifecycle"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("open-lifecycle"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         assertEq(uint256(election.state()), uint256(VESTArTypes.ElectionState.Scheduled));
 
@@ -31,11 +38,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     }
 
     function testOrganizerCanCancelBeforeStart() public {
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("cancel-before-start"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 2 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 2 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("cancel-before-start"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(organizer);
         election.cancelBeforeStart();
@@ -44,11 +58,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     }
 
     function testOrganizerCanCancelOpenElectionAfterItStarts() public {
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("cancel-active-open"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 2 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 2 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("cancel-active-open"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.warp(block.timestamp + 1 days + 1);
 
@@ -68,14 +89,21 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
 
         bytes memory privateKeyData = hex"1234abcd";
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("cancel-key-revealed"),
             uint64(block.timestamp - 2 days),
             uint64(block.timestamp - 1 days),
             uint64(block.timestamp - 1 hours),
             keccak256(privateKeyData)
         );
 
-        election.initialize(config, organizer, true, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("cancel-key-revealed"),
+            config,
+            organizer,
+            true,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(platformAdmin);
         election.revealPrivateKey(privateKeyData);
@@ -93,11 +121,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     function testCannotCancelElectionAfterFinalize() public {
         vm.warp(10 days);
 
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("cancel-after-finalize"), uint64(block.timestamp - 3 days), uint64(block.timestamp - 1 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp - 3 days), uint64(block.timestamp - 1 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("cancel-after-finalize"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(organizer);
         election.finalizeResults(
@@ -120,14 +155,21 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
 
         bytes memory privateKeyData = hex"1234abcd";
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("private-lifecycle"),
             uint64(block.timestamp - 2 days),
             uint64(block.timestamp - 1 days),
             uint64(block.timestamp - 1 hours),
             keccak256(privateKeyData)
         );
 
-        election.initialize(config, organizer, true, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("private-lifecycle"),
+            config,
+            organizer,
+            true,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(platformAdmin);
         election.setRevealManager(revealManager, true);
@@ -147,14 +189,21 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         bytes memory committedPrivateKey = hex"1234abcd";
         bytes memory wrongPrivateKey = hex"9999eeee";
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("private-mismatch"),
             uint64(block.timestamp - 2 days),
             uint64(block.timestamp - 1 days),
             uint64(block.timestamp - 1 hours),
             keccak256(committedPrivateKey)
         );
 
-        election.initialize(config, organizer, true, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("private-mismatch"),
+            config,
+            organizer,
+            true,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(platformAdmin);
         election.setRevealManager(revealManager, true);
@@ -166,14 +215,21 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
 
     function testOnlyPlatformAdminCanAssignRevealManager() public {
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("private-admin"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             uint64(block.timestamp + 3 days),
             keccak256(hex"1234")
         );
 
-        election.initialize(config, organizer, true, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("private-admin"),
+            config,
+            organizer,
+            true,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(organizer);
         vm.expectRevert("VESTAr: only platform admin");
@@ -184,14 +240,21 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         vm.warp(10 days);
 
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("private-finalize"),
             uint64(block.timestamp - 2 days),
             uint64(block.timestamp - 1 days),
             uint64(block.timestamp - 1 hours),
             keccak256(hex"1234")
         );
 
-        election.initialize(config, organizer, true, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("private-finalize"),
+            config,
+            organizer,
+            true,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.prank(organizer);
         vm.expectRevert("VESTAr: reveal first");
@@ -207,11 +270,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     }
 
     function testOrganizerCanUpdateElectionMetadataBeforeStart() public {
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("metadata-edit"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("metadata-edit"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         bytes32 newTitleHash = keccak256("Lifecycle Open Vote Fixed");
         bytes32 newCandidateManifestHash = keccak256("candidates-fixed");
@@ -227,11 +297,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     }
 
     function testOrganizerCannotUpdateElectionMetadataAfterStart() public {
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("metadata-lock"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("metadata-lock"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.warp(block.timestamp + 1 days);
 
@@ -245,11 +322,18 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
     function testOrganizerCannotEditCandidateAllowlistAfterStart() public {
         // 실제 사례 : organizer는 시작 전까지만 후보 목록을 확정하고,
         // 투표가 열린 뒤에는 프론트/백 기준점이 흔들리지 않도록 수정이 막혀야 함
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("allowlist-lock"), uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days)
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(uint64(block.timestamp + 1 days), uint64(block.timestamp + 3 days));
 
-        election.initialize(config, organizer, false, address(mockKarmaRegistry), platformAdmin, platformTreasury);
+        election.initialize(
+            bytes32("allowlist-lock"),
+            config,
+            organizer,
+            false,
+            address(mockKarmaRegistry),
+            platformAdmin,
+            platformTreasury
+        );
 
         vm.warp(block.timestamp + 1 days);
 
@@ -261,13 +345,12 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.setCandidateAllowlist(candidateHashes, true);
     }
 
-    function _buildOpenConfig(bytes32 electionId_, uint64 startAt_, uint64 endAt_)
+    function _buildOpenConfig(uint64 startAt_, uint64 endAt_)
         internal
         view
         returns (VESTArTypes.ElectionConfig memory)
     {
         return VESTArTypes.ElectionConfig({
-            electionId: electionId_,
             seriesId: bytes32("lifecycle-open-series"),
             visibilityMode: VESTArTypes.VisibilityMode.OPEN,
             titleHash: keccak256("Lifecycle Open Vote"),
@@ -291,15 +374,12 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         });
     }
 
-    function _buildPrivateConfig(
-        bytes32 electionId_,
-        uint64 startAt_,
-        uint64 endAt_,
-        uint64 resultRevealAt_,
-        bytes32 commitmentHash
-    ) internal view returns (VESTArTypes.ElectionConfig memory) {
+    function _buildPrivateConfig(uint64 startAt_, uint64 endAt_, uint64 resultRevealAt_, bytes32 commitmentHash)
+        internal
+        view
+        returns (VESTArTypes.ElectionConfig memory)
+    {
         return VESTArTypes.ElectionConfig({
-            electionId: electionId_,
             seriesId: bytes32("lifecycle-private-series"),
             visibilityMode: VESTArTypes.VisibilityMode.PRIVATE,
             titleHash: keccak256("Lifecycle Private Vote"),

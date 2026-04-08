@@ -30,12 +30,7 @@ abstract contract VESTArOpenVoteModuleImpl is VESTArElectionStorage, IVESTArOpen
         }
 
         emit OpenVoteSubmitted(
-            _config.electionId,
-            msg.sender,
-            candidateKeys.length,
-            _candidateBatchHash(candidateKeys),
-            1,
-            paymentAmount
+            _electionId, msg.sender, candidateKeys.length, _candidateBatchHash(candidateKeys), 1, paymentAmount
         );
     }
 
