@@ -40,6 +40,14 @@ contract VESTArSettlementModuleHarness is VESTArSettlementModuleImpl {
         _settlementSummary = newSettlementSummary;
     }
 
+    function setRefundSummary(VESTArTypes.RefundSummary memory newRefundSummary) external {
+        _refundSummary = newRefundSummary;
+    }
+
+    function setRefundableAmount(address voterAddress, uint256 newRefundableAmount) external {
+        _refundableAmountByVoter[voterAddress] = newRefundableAmount;
+    }
+
     // internal helper를 external로 감싸면 계산 규칙을 isolate해서 테스트 가능
     function previewSettlementSplit(uint256 totalRevenueAmount)
         external
@@ -216,6 +224,115 @@ contract VESTArSettlementTest is VESTArTestBase {
         assertEq(mockUSDT.balanceOf(platformTreasury), 100);
         assertEq(mockUSDT.balanceOf(organizer), 100);
         assertTrue(settlementHarness.getSettlementSummary().settled);
+    }
+
+    function testEnableRefundsStoresSnapshotForClaimBasedRefundFlow() public {
+        settlementHarness.configureSettlement(
+            VESTArTypes.PaymentMode.PAID,
+            25_000,
+            address(mockUSDT),
+            platformTreasury,
+            organizer,
+            platformAdmin
+        );
+        settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
+        settlementHarness.setTotalCollectedAmount(200);
+
+        vm.prank(organizer);
+        settlementHarness.enableRefunds();
+
+        VESTArTypes.RefundSummary memory refundSummary = settlementHarness.getRefundSummary();
+        assertEq(refundSummary.paymentToken, address(mockUSDT));
+        assertEq(refundSummary.totalRefundableAmount, 200);
+        assertEq(refundSummary.totalRefundedAmount, 0);
+        assertEq(refundSummary.refundsEnabledBy, organizer);
+        assertTrue(refundSummary.refundsEnabled);
+        assertTrue(settlementHarness.refundsEnabled());
+    }
+
+    function testClaimRefundLetsVoterPullOwnPaidAmount() public {
+        settlementHarness.configureSettlement(
+            VESTArTypes.PaymentMode.PAID,
+            25_000,
+            address(mockUSDT),
+            platformTreasury,
+            organizer,
+            platformAdmin
+        );
+        settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
+        settlementHarness.setTotalCollectedAmount(200);
+        settlementHarness.setRefundableAmount(voter, 120);
+        settlementHarness.setRefundableAmount(revealManager, 80);
+        mockUSDT.mint(address(settlementHarness), 200);
+
+        vm.prank(platformAdmin);
+        settlementHarness.enableRefunds();
+
+        assertEq(settlementHarness.refundableAmountOf(voter), 120);
+
+        vm.prank(voter);
+        uint256 refundedAmount = settlementHarness.claimRefund();
+
+        assertEq(refundedAmount, 120);
+        assertEq(mockUSDT.balanceOf(voter), 120);
+        assertEq(settlementHarness.refundableAmountOf(voter), 0);
+        assertEq(settlementHarness.refundableAmountOf(revealManager), 80);
+        assertEq(settlementHarness.getRefundSummary().totalRefundedAmount, 120);
+    }
+
+    function testClaimRefundRevertsWhenRefundModeIsDisabled() public {
+        settlementHarness.configureSettlement(
+            VESTArTypes.PaymentMode.PAID,
+            25_000,
+            address(mockUSDT),
+            platformTreasury,
+            organizer,
+            platformAdmin
+        );
+        settlementHarness.setRefundableAmount(voter, 25_000);
+
+        vm.prank(voter);
+        vm.expectRevert("VESTAr: refunds disabled");
+        settlementHarness.claimRefund();
+    }
+
+    function testEnableRefundsBlocksLaterSettlement() public {
+        settlementHarness.configureSettlement(
+            VESTArTypes.PaymentMode.PAID,
+            25_000,
+            address(mockUSDT),
+            platformTreasury,
+            organizer,
+            platformAdmin
+        );
+        settlementHarness.setElectionState(VESTArTypes.ElectionState.Finalized);
+        settlementHarness.setTotalCollectedAmount(200);
+
+        vm.prank(platformAdmin);
+        settlementHarness.enableRefunds();
+
+        mockUSDT.mint(address(settlementHarness), 200);
+
+        vm.prank(platformAdmin);
+        vm.expectRevert("VESTAr: refunds enabled");
+        settlementHarness.settleRevenue();
+    }
+
+    function testRandomUserCannotEnableRefunds() public {
+        settlementHarness.configureSettlement(
+            VESTArTypes.PaymentMode.PAID,
+            25_000,
+            address(mockUSDT),
+            platformTreasury,
+            organizer,
+            platformAdmin
+        );
+        settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
+        settlementHarness.setTotalCollectedAmount(100);
+
+        vm.prank(voter);
+        vm.expectRevert("VESTAr: only admin or organizer");
+        settlementHarness.enableRefunds();
     }
 
     function testRandomUserCannotSettleRevenue() public {

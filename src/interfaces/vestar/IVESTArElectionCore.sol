@@ -19,12 +19,16 @@ interface IVESTArElectionCore is
     IVESTArPrivateVoteModule,
     IVESTArSettlementModule
 {
-    // 후보 등록 관련 코드 : Open 모드 validation에 쓰는 candidate allowlist 변경 로그
-    event CandidateAllowlistUpdated(
+    // election 표시 메타데이터 관련 코드 : 제목 해시와 후보 manifest 위치/해시를 교체했을 때 남기는 로그
+    event ElectionMetadataUpdated(
         bytes32 indexed electionId,
-        bytes32 indexed candidateHash,
-        bool allowed
+        bytes32 indexed titleHash,
+        bytes32 indexed candidateManifestHash,
+        string candidateManifestURI
     );
+
+    // 후보 등록 관련 코드 : Open 모드 validation에 쓰는 candidate allowlist 변경 로그
+    event CandidateAllowlistUpdated(bytes32 indexed electionId, bytes32 indexed candidateHash, bool allowed);
 
     // Open / Private 모드 확인
     function visibilityMode() external view returns (VESTArTypes.VisibilityMode);
@@ -34,6 +38,13 @@ interface IVESTArElectionCore is
 
     // 다중 선택일 때 ballot 하나에 담을 수 있는 최대 후보 수
     function maxSelectionsPerSubmission() external view returns (uint16);
+
+    // 메타데이터 수정 관련 코드 : 시작 전 organizer/admin이 제목/후보 manifest 오탈자를 수정
+    function updateElectionMetadata(
+        bytes32 newTitleHash,
+        bytes32 newCandidateManifestHash,
+        string calldata newCandidateManifestURI
+    ) external;
 
     // 후보 등록 관련 코드 : 투표 시작 전에 organizer/admin이 허용 후보 hash 목록을 세팅
     function setCandidateAllowlist(bytes32[] calldata candidateHashes, bool allowed) external;

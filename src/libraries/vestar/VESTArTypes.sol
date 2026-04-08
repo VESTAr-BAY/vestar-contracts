@@ -111,6 +111,16 @@ library VESTArTypes {
         uint256 totalInvalidVotes;
     }
 
+    // 취소 메타데이터 관련 코드 : 누가 언제 어떤 상태에서 취소했는지 프론트/백엔드가 한 번에 읽기 위한 구조체
+    struct CancellationSummary {
+        // 취소를 실행한 organizer 또는 platform admin 주소
+        address cancelledBy;
+        // 취소가 확정된 시각
+        uint64 cancelledAt;
+        // 취소 직전 live state
+        ElectionState previousState;
+    }
+
     // 투표권 사용량 관련 코드 : 한 유저가 특정 단위 기간에서 ballot을 몇 번 썼는지 표현
     struct BallotUsage {
         // periodKey: 단위 기간 구분용 키
@@ -137,5 +147,21 @@ library VESTArTypes {
         uint256 organizerRevenueAmount;
         // 이미 정산을 실행했는지 여부
         bool settled;
+    }
+
+    // 환불 기능 관련 코드 : 주최자/admin이 환불 모드를 열었는지와 누적 환불 진행 상황을 프론트가 한 번에 읽기 위한 구조체
+    struct RefundSummary {
+        // 결제 토큰 주소
+        address paymentToken;
+        // 환불 모드가 열릴 때 스냅샷한 총 환불 대상 금액
+        uint256 totalRefundableAmount;
+        // 이미 사용자들이 claim한 환불 누적액
+        uint256 totalRefundedAmount;
+        // 환불 모드를 연 시각
+        uint64 refundsEnabledAt;
+        // 환불 모드를 연 organizer 또는 platform admin 주소
+        address refundsEnabledBy;
+        // 환불 모드가 활성화됐는지 여부
+        bool refundsEnabled;
     }
 }

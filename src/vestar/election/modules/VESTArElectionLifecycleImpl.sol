@@ -48,6 +48,11 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         return _resultSummary;
     }
 
+    // 취소 메타데이터 관련 코드 : 프론트/백엔드가 cancellation actor / time / 직전 상태를 한 번에 읽을 때 사용
+    function getCancellationSummary() public view virtual returns (VESTArTypes.CancellationSummary memory) {
+        return _cancellationSummary;
+    }
+
     // key reveal 권한 관련 코드 : platform admin 또는 위임된 내부 팀 관리자만 true
     function isRevealManager(address account) public view virtual returns (bool) {
         return _isRevealManager(account);
@@ -74,11 +79,28 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         return _state;
     }
 
-    // 투표 상태 관련 코드 : 시작 전이라면 cancel 가능
-    function cancelBeforeStart() public virtual {
+    // 투표 상태 관련 코드 : organizer 또는 platform admin이 Finalized 전이라면 언제든 취소 가능
+    // 예시 : 진행 중인 선거에서 운영 이슈가 발견되면 즉시 Cancelled로 전환하고, 이후에는 되돌리지 않음
+    function cancelElection() public virtual {
         _requirePlatformAdminOrOrganizer();
-        require(syncState() == VESTArTypes.ElectionState.Scheduled, "VESTAr: already started");
+
+        VESTArTypes.ElectionState currentState = syncState();
+        require(currentState != VESTArTypes.ElectionState.Cancelled, "VESTAr: already cancelled");
+        require(currentState != VESTArTypes.ElectionState.Finalized, "VESTAr: already finalized");
+
+        _cancellationSummary = VESTArTypes.CancellationSummary({
+            cancelledBy: msg.sender,
+            cancelledAt: uint64(block.timestamp),
+            previousState: currentState
+        });
+
+        emit ElectionCancelled(_config.electionId, msg.sender, currentState, uint64(block.timestamp));
         _transitionState(VESTArTypes.ElectionState.Cancelled);
+    }
+
+    // 하위호환 관련 코드 : 예전 프론트/백엔드가 쓰던 함수명도 동일 의미로 유지
+    function cancelBeforeStart() public virtual {
+        cancelElection();
     }
 
     // 투표 상태 관련 코드 : organizer 또는 platform admin이 Active 상태를 강제로 마감

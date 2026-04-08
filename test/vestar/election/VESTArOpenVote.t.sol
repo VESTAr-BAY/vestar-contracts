@@ -45,6 +45,10 @@ contract VESTArOpenVoteHarness is VESTArOpenVoteModuleImpl {
     function totalCollectedAmount() external view returns (uint256) {
         return _totalCollectedAmount;
     }
+
+    function trackedRefundableAmount(address voterAddress) external view returns (uint256) {
+        return _refundableAmountByVoter[voterAddress];
+    }
 }
 
 // OpenVote 모듈 테스트 자리
@@ -90,6 +94,7 @@ contract VESTArOpenVoteTest is VESTArTestBase {
 
         assertEq(openVoteHarness.submittedBallots(voter, 0), 1);
         assertEq(openVoteHarness.totalCollectedAmount(), FULL_PRICE_PER_BALLOT);
+        assertEq(openVoteHarness.trackedRefundableAmount(voter), FULL_PRICE_PER_BALLOT);
         assertEq(openVoteHarness.totalVotesForCandidate("IU"), 1);
         assertEq(openVoteHarness.totalVotesForCandidate("ParkHyoShin"), 1);
         assertEq(openVoteHarness.totalVotesForCandidate("Naul"), 1);

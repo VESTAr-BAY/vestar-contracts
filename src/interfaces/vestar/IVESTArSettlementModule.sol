@@ -16,6 +16,20 @@ interface IVESTArSettlementModule {
         uint256 organizerRevenueAmount
     );
 
+    // organizer/admin이 "이 election은 정산 대신 각 유저가 직접 환불받게 한다"를 활성화할 때 남기는 이벤트
+    event RefundsEnabled(
+        bytes32 indexed electionId,
+        address indexed enabledBy,
+        uint256 totalRefundableAmount
+    );
+
+    // 유저가 자기 지갑으로 직접 환불을 수령했을 때 남기는 이벤트
+    event RefundClaimed(
+        bytes32 indexed electionId,
+        address indexed voter,
+        uint256 refundAmount
+    );
+
     // FREE / PAID 모드를 enum으로 읽음
     function paymentMode() external view returns (VESTArTypes.PaymentMode);
 
@@ -42,6 +56,21 @@ interface IVESTArSettlementModule {
 
     // 정산 요약 전체를 struct로 조회
     function getSettlementSummary() external view returns (VESTArTypes.SettlementSummary memory);
+
+    // 환불 요약 전체를 struct로 조회
+    function getRefundSummary() external view returns (VESTArTypes.RefundSummary memory);
+
+    // 특정 유저가 현재 claim 가능한 누적 환불 금액
+    function refundableAmountOf(address voter) external view returns (uint256);
+
+    // refund mode가 이미 열렸는지 빠르게 읽는 helper
+    function refundsEnabled() external view returns (bool);
+
+    // organizer/admin이 정산 대신 유저 개별 claim 환불 모드를 연다
+    function enableRefunds() external;
+
+    // 유저가 자기 누적 환불액을 직접 수령
+    function claimRefund() external returns (uint256);
 
     // 투표 종료 후 50:50 정산 실행
     function settleRevenue() external;

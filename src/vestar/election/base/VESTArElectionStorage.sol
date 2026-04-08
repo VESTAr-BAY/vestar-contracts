@@ -21,7 +21,9 @@ abstract contract VESTArElectionStorage {
 
     VESTArTypes.ElectionConfig internal _config;
     VESTArTypes.ResultSummary internal _resultSummary;
+    VESTArTypes.CancellationSummary internal _cancellationSummary;
     VESTArTypes.SettlementSummary internal _settlementSummary;
+    VESTArTypes.RefundSummary internal _refundSummary;
 
     VESTArTypes.ElectionState internal _state;
 
@@ -39,6 +41,7 @@ abstract contract VESTArElectionStorage {
     mapping(bytes32 => uint256) internal _openVoteCountByCandidateHash;
     mapping(bytes32 => bool) internal _allowedCandidateHash;
     mapping(address => bool) internal _revealManagers;
+    mapping(address => uint256) internal _refundableAmountByVoter;
 
     // 설정 검증 관련 코드 : 새 정책에 맞지 않는 election config를 초기 단계에서 막기 위한 내부 helper
     function _validateElectionConfig() internal view {
@@ -216,6 +219,7 @@ abstract contract VESTArElectionStorage {
 
         IERC20(_config.paymentToken).safeTransferFrom(payer, address(this), paymentAmount);
         _totalCollectedAmount += paymentAmount;
+        _refundableAmountByVoter[payer] += paymentAmount;
     }
 
     // 결제 정책 관련 코드 : 50:50이지만 홀수 1단위 잔차는 organizer에게 귀속
