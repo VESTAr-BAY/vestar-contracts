@@ -41,7 +41,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
@@ -63,7 +63,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
 
         vm.prank(organizer);
         vm.expectRevert("VESTAr: organizer not eligible");
-        electionFactory.createElection(config);
+        electionFactory.createElection(config, _candidateHashes("IU"));
     }
 
     function testUnverifiedOrganizerWithEntryKarmaCanCreateElection() public {
@@ -74,7 +74,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
             _buildOpenConfig(bytes32("karma-series"), keccak256("factory-open-vote"), VESTArTypes.PaymentMode.FREE, 0);
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
@@ -94,7 +94,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
 
         vm.prank(platformAdmin);
         organizerRegistry.setVerification(organizer, false, 0, 200);
@@ -134,8 +134,8 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         );
 
         vm.startPrank(organizer);
-        address femaleSoloElection = electionFactory.createElection(femaleSoloConfig);
-        address maleSoloElection = electionFactory.createElection(maleSoloConfig);
+        address femaleSoloElection = electionFactory.createElection(femaleSoloConfig, _candidateHashes("IU"));
+        address maleSoloElection = electionFactory.createElection(maleSoloConfig, _candidateHashes("TAEYEON"));
         vm.stopPrank();
 
         bytes32[] memory electionIds = electionFactory.getSeriesElectionIds(mamaSeriesId);
@@ -165,8 +165,8 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         );
 
         vm.startPrank(organizer);
-        address firstElectionAddress = electionFactory.createElection(config);
-        address secondElectionAddress = electionFactory.createElection(config);
+        address firstElectionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
+        address secondElectionAddress = electionFactory.createElection(config, _candidateHashes("TAEYEON"));
         vm.stopPrank();
 
         assertTrue(expectedFirstElectionId != expectedSecondElectionId);

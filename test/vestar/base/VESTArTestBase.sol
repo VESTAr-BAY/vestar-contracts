@@ -64,4 +64,19 @@ abstract contract VESTArTestBase is Test {
         mockUSDT = new MockUSDT();
         mockKarmaRegistry = new MockKarmaRegistry();
     }
+
+    function _candidateHashes(string memory firstCandidate) internal pure returns (bytes32[] memory candidateHashes) {
+        candidateHashes = new bytes32[](1);
+        candidateHashes[0] = keccak256(bytes(firstCandidate));
+    }
+
+    function _candidateHashes(string memory firstCandidate, string memory secondCandidate)
+        internal
+        pure
+        returns (bytes32[] memory candidateHashes)
+    {
+        candidateHashes = new bytes32[](2);
+        candidateHashes[0] = keccak256(bytes(firstCandidate));
+        candidateHashes[1] = keccak256(bytes(secondCandidate));
+    }
 }

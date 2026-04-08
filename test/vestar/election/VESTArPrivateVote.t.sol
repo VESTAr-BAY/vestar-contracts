@@ -96,14 +96,7 @@ contract VESTArPrivateVoteTest is VESTArTestBase {
         bytes32 commitmentHash = keccak256(privateKeyData);
 
         privateVoteHarness.setPrivateConfig(
-            hex"01",
-            commitmentHash,
-            1,
-            VESTArTypes.PaymentMode.FREE,
-            0,
-            address(0),
-            address(mockKarmaRegistry),
-            0
+            hex"01", commitmentHash, 1, VESTArTypes.PaymentMode.FREE, 0, address(0), address(mockKarmaRegistry), 0
         );
 
         assertEq(privateVoteHarness.privateKeyCommitmentHash(), commitmentHash);
@@ -190,13 +183,7 @@ contract VESTArPrivateVoteTest is VESTArTestBase {
         vm.startPrank(voter);
         mockUSDT.approve(address(privateVoteHarness), 25_000);
         vm.expectEmit(true, true, false, true);
-        emit IVESTArPrivateVoteModule.EncryptedVoteSubmitted(
-            bytes32(0),
-            voter,
-            keccak256(encryptedBallot),
-            1,
-            25_000
-        );
+        emit IVESTArPrivateVoteModule.EncryptedVoteSubmitted(bytes32(0), voter, keccak256(encryptedBallot), 1, 25_000);
         privateVoteHarness.submitEncryptedVote(encryptedBallot);
         vm.stopPrank();
     }

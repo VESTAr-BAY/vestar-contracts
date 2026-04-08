@@ -26,12 +26,11 @@ contract VESTArOrganizerRegistry is VESTArOwnablePausable, IVESTArOrganizerRegis
 
     // verified 관련 코드 : platform owner가 verified on/off와 효력 시각을 관리
     // 예시 : verified=true면 karma 0이어도 즉시 투표 생성 가능, false면 최소 karma 1이 필요
-    function setVerification(
-        address organizerAddress,
-        bool verified,
-        uint64 effectiveTime,
-        uint64 revokedTime
-    ) public virtual onlyOwner {
+    function setVerification(address organizerAddress, bool verified, uint64 effectiveTime, uint64 revokedTime)
+        public
+        virtual
+        onlyOwner
+    {
         VESTArTypes.OrganizerProfile storage profile = _organizerProfiles[organizerAddress];
 
         profile.organizer = organizerAddress;

@@ -26,10 +26,7 @@ interface IVESTArElectionEligibility {
     function currentPeriodKey(uint64 timestamp) external view returns (uint48);
 
     // 특정 유저가 특정 단위 기간에서 ballot을 얼마나 썼는지, 얼마나 남았는지를 구조체로 읽어옴
-    function ballotUsageOf(address voter, uint48 periodKey)
-        external
-        view
-        returns (VESTArTypes.BallotUsage memory);
+    function ballotUsageOf(address voter, uint48 periodKey) external view returns (VESTArTypes.BallotUsage memory);
 
     // 현재 시각 기준으로 남은 ballot 수를 숫자로 반환
     function remainingBallots(address voter, uint64 timestamp) external view returns (uint32);

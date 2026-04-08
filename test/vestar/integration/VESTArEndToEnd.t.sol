@@ -34,7 +34,7 @@ contract VESTArEndToEndTest is VESTArTestBase {
     function testOpenElectionEndToEndWithSeriesAndSettlement() public {
         // 실제 사례 :
         // 1) verified organizer가 "MAMA 2025" series 아래 "female solo" election 생성
-        // 2) 투표 시작 전 candidate allowlist를 등록
+        // 2) 생성 시 candidate allowlist까지 같이 등록
         // 3) 유저가 ["IU", "ParkHyoShin"] 다중 선택 ballot 1개를 제출
         // 4) 종료 후 organizer가 결과를 finalize하고 수익을 50:50 정산
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
@@ -46,19 +46,12 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU", "ParkHyoShin"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
         bytes32 iuHash = keccak256(bytes("IU"));
         bytes32 parkHash = keccak256(bytes("ParkHyoShin"));
-
-        bytes32[] memory candidateHashes = new bytes32[](2);
-        candidateHashes[0] = iuHash;
-        candidateHashes[1] = parkHash;
-
-        vm.prank(organizer);
-        election.setCandidateAllowlist(candidateHashes, true);
 
         assertEq(election.seriesId(), bytes32("mama-2025"));
         assertTrue(election.isCandidateHashAllowed(iuHash));
@@ -134,8 +127,8 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         vm.startPrank(organizer);
-        address femaleSoloElection = electionFactory.createElection(femaleSoloConfig);
-        address maleSoloElection = electionFactory.createElection(maleSoloConfig);
+        address femaleSoloElection = electionFactory.createElection(femaleSoloConfig, _candidateHashes("IU"));
+        address maleSoloElection = electionFactory.createElection(maleSoloConfig, _candidateHashes("TAEYEON"));
         vm.stopPrank();
 
         bytes32[] memory electionIds = electionFactory.getSeriesElectionIds(mamaSeriesId);
@@ -165,7 +158,7 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
@@ -198,7 +191,7 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("WINNER"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
@@ -248,17 +241,11 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         vm.prank(organizer);
-        address electionAddress = electionFactory.createElection(config);
+        address electionAddress = electionFactory.createElection(config, _candidateHashes("IU"));
 
         VESTArElection election = VESTArElection(electionAddress);
 
         bytes32 iuHash = keccak256(bytes("IU"));
-
-        bytes32[] memory candidateHashes = new bytes32[](1);
-        candidateHashes[0] = iuHash;
-
-        vm.prank(organizer);
-        election.setCandidateAllowlist(candidateHashes, true);
 
         VESTArTypes.ElectionConfig memory storedConfig = election.getElectionConfig();
         bytes32 expectedElectionId = electionFactory.computeElectionId(

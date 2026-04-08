@@ -11,10 +11,7 @@ import {VESTArElectionFactory} from "../src/vestar/factory/VESTArElectionFactory
 // PRIVATE_KEY=... ORGANIZER_REGISTRY=0x... KARMA_REGISTRY=0x... forge script script/DeployVESTArFactoryOnly.s.sol:DeployVESTArFactoryOnlyScript \
 //   --rpc-url status_testnet --broadcast --slow --gas-price 0 --priority-gas-price 0 -vvvv
 contract DeployVESTArFactoryOnlyScript is Script {
-    function run()
-        external
-        returns (VESTArElectionFactory electionFactory, VESTArElection electionImplementation)
-    {
+    function run() external returns (VESTArElectionFactory electionFactory, VESTArElection electionImplementation) {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(privateKey);
 
@@ -26,11 +23,7 @@ contract DeployVESTArFactoryOnlyScript is Script {
         vm.startBroadcast(privateKey);
         electionImplementation = new VESTArElection(initialOwner);
         electionFactory = new VESTArElectionFactory(
-            initialOwner,
-            organizerRegistry,
-            karmaRegistry,
-            platformTreasury,
-            address(electionImplementation)
+            initialOwner, organizerRegistry, karmaRegistry, platformTreasury, address(electionImplementation)
         );
         vm.stopBroadcast();
 

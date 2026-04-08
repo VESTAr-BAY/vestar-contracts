@@ -127,14 +127,7 @@ contract VESTArOpenVoteTest is VESTArTestBase {
         vm.startPrank(voter);
         mockUSDT.approve(address(openVoteHarness), FULL_PRICE_PER_BALLOT);
         vm.expectEmit(true, true, false, true);
-        emit IVESTArOpenVoteModule.OpenVoteSubmitted(
-            bytes32(0),
-            voter,
-            2,
-            expectedBatchHash,
-            1,
-            FULL_PRICE_PER_BALLOT
-        );
+        emit IVESTArOpenVoteModule.OpenVoteSubmitted(bytes32(0), voter, 2, expectedBatchHash, 1, FULL_PRICE_PER_BALLOT);
         openVoteHarness.submitOpenVote(selections);
         vm.stopPrank();
     }

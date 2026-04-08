@@ -8,7 +8,6 @@ import {Pausable} from "../utils/Pausable.sol";
 // 기존 Ownable과 Pausable을 한 번에 묶어서, VESTAr 쪽 컨트랙트가 공통으로 상속할 베이스를 제공
 
 abstract contract VESTArOwnablePausable is Ownable, Pausable, IVESTArAdminControl {
-
     constructor(address initialOwner) Ownable(initialOwner) {}
 
     // external onlyOwner : owner만 호출 가능

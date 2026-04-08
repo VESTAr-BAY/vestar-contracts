@@ -19,16 +19,12 @@ interface IVESTArElectionLifecycle {
 
     // previousState -> nextState처럼 전이 전/후를 같이 기록하면 추적이 쉬움
     event ElectionStateUpdated(
-        bytes32 indexed electionId,
-        VESTArTypes.ElectionState previousState,
-        VESTArTypes.ElectionState nextState
+        bytes32 indexed electionId, VESTArTypes.ElectionState previousState, VESTArTypes.ElectionState nextState
     );
 
     // Private 모드에서 key 공개 시점을 로그로 남김
     event PrivateKeyRevealed(
-        bytes32 indexed electionId,
-        bytes32 indexed privateKeyCommitmentHash,
-        bytes privateKeyData
+        bytes32 indexed electionId, bytes32 indexed privateKeyCommitmentHash, bytes privateKeyData
     );
 
     // 내부 팀 관리자에게 key reveal 권한을 위임했는지 기록
@@ -43,11 +39,7 @@ interface IVESTArElectionLifecycle {
     );
 
     // 최종 결과 manifest가 확정됐을 때 남기는 이벤트
-    event ResultFinalized(
-        bytes32 indexed electionId,
-        bytes32 indexed resultManifestHash,
-        string resultManifestURI
-    );
+    event ResultFinalized(bytes32 indexed electionId, bytes32 indexed resultManifestHash, string resultManifestURI);
 
     // electionId는 bytes32 같은 고정 길이 식별자로 자주 사용
     function electionId() external view returns (bytes32);

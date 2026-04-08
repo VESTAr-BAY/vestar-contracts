@@ -73,12 +73,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testPaymentModeAndCostPerBallotReturnConfiguredValues() public {
         // 실제 사례 : 유료 election에서 ballot 1개 가격을 0.025 mockUSDT로 잡아두는 경우
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
 
         assertEq(uint256(settlementHarness.paymentMode()), uint256(VESTArTypes.PaymentMode.PAID));
@@ -89,12 +84,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testQuotePaymentMultipliesBallotCountByCostPerBallot() public {
         // 실제 사례 : ballot 1개 가격이 0.025 mockUSDT면 7개 ballot 제출 예정 금액은 0.175 mockUSDT
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
 
         assertEq(settlementHarness.quotePayment(7), 175_000);
@@ -103,12 +93,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testQuotePaymentReturnsZeroWhenElectionIsFree() public {
         // 실제 사례 : 고객 요청으로 무료 이벤트를 열면 ballot 수와 상관없이 요구 결제 금액은 0
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.FREE,
-            0,
-            address(0),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.FREE, 0, address(0), platformTreasury, organizer, platformAdmin
         );
 
         assertEq(settlementHarness.quotePayment(9), 0);
@@ -117,12 +102,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testPlatformTreasuryReturnsStoredAddress() public {
         // 실제 사례 : 플랫폼 multisig 또는 treasury 주소를 정산 수취 주소로 저장
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
 
         assertEq(settlementHarness.platformTreasury(), platformTreasury);
@@ -138,8 +118,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     // 홀수 wei를 테스트하는 이유는 나눗셈 내림(floor) 때문에 1 wei 잔차 처리를 확인해야 하기 때문
     function testPreviewSettlementSplitGivesOddRemainderToOrganizer() public view {
         // 실제 사례 : 총수익 101이면 플랫폼 50, organizer 51로 나눠서 organizer가 잔차 1을 가져감
-        (uint256 platformRevenueAmount, uint256 organizerRevenueAmount) =
-            settlementHarness.previewSettlementSplit(101);
+        (uint256 platformRevenueAmount, uint256 organizerRevenueAmount) = settlementHarness.previewSettlementSplit(101);
 
         assertEq(platformRevenueAmount, 50);
         assertEq(organizerRevenueAmount, 51);
@@ -178,12 +157,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testSettleRevenueTransfersHalfToPlatformAndOddRemainderToOrganizer() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Finalized);
         settlementHarness.setTotalCollectedAmount(101);
@@ -207,12 +181,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testOrganizerCanAlsoSettleRevenueAfterFinalize() public {
         // 실제 사례 : 주최자가 운영 대시보드에서 직접 정산 버튼을 눌러도 정상적으로 분배돼야 함
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Finalized);
         settlementHarness.setTotalCollectedAmount(200);
@@ -228,12 +197,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testEnableRefundsStoresSnapshotForClaimBasedRefundFlow() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
         settlementHarness.setTotalCollectedAmount(200);
@@ -252,12 +216,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testClaimRefundLetsVoterPullOwnPaidAmount() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
         settlementHarness.setTotalCollectedAmount(200);
@@ -282,12 +241,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testClaimRefundRevertsWhenRefundModeIsDisabled() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setRefundableAmount(voter, 25_000);
 
@@ -298,12 +252,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testEnableRefundsBlocksLaterSettlement() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Finalized);
         settlementHarness.setTotalCollectedAmount(200);
@@ -320,12 +269,7 @@ contract VESTArSettlementTest is VESTArTestBase {
 
     function testRandomUserCannotEnableRefunds() public {
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Closed);
         settlementHarness.setTotalCollectedAmount(100);
@@ -338,12 +282,7 @@ contract VESTArSettlementTest is VESTArTestBase {
     function testRandomUserCannotSettleRevenue() public {
         // 실제 사례 : 유저는 결과를 구경할 수는 있어도, organizer/플랫폼 대신 정산 버튼을 누를 수는 없어야 함
         settlementHarness.configureSettlement(
-            VESTArTypes.PaymentMode.PAID,
-            25_000,
-            address(mockUSDT),
-            platformTreasury,
-            organizer,
-            platformAdmin
+            VESTArTypes.PaymentMode.PAID, 25_000, address(mockUSDT), platformTreasury, organizer, platformAdmin
         );
         settlementHarness.setElectionState(VESTArTypes.ElectionState.Finalized);
         settlementHarness.setTotalCollectedAmount(100);

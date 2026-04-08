@@ -71,8 +71,10 @@ interface IVESTArElectionFactory is IVESTArAdminControl {
         uint256 organizerNonce
     ) external view returns (bytes32 electionId);
 
-    // config struct 하나를 받아 새 election을 생성
-    function createElection(VESTArTypes.ElectionConfig calldata config) external returns (address electionAddress);
+    // config struct + 초기 후보 allowlist를 받아 새 election을 생성
+    function createElection(VESTArTypes.ElectionConfig calldata config, bytes32[] calldata initialCandidateHashes)
+        external
+        returns (address electionAddress);
 
     // electionId -> election address 매핑 조회
     function getElection(bytes32 electionId) external view returns (address electionAddress);
