@@ -34,6 +34,14 @@ interface IVESTArElectionLifecycle {
     // 내부 팀 관리자에게 key reveal 권한을 위임했는지 기록
     event RevealManagerUpdated(address indexed manager, bool allowed);
 
+    // 취소가 확정됐을 때 누가 언제 어떤 상태에서 취소했는지 기록
+    event ElectionCancelled(
+        bytes32 indexed electionId,
+        address indexed cancelledBy,
+        VESTArTypes.ElectionState previousState,
+        uint64 cancelledAt
+    );
+
     // 최종 결과 manifest가 확정됐을 때 남기는 이벤트
     event ResultFinalized(
         bytes32 indexed electionId,
@@ -65,6 +73,9 @@ interface IVESTArElectionLifecycle {
     // 결과 요약도 struct 단위로 반환
     function getResultSummary() external view returns (VESTArTypes.ResultSummary memory);
 
+    // 취소 정보도 struct 단위로 반환
+    function getCancellationSummary() external view returns (VESTArTypes.CancellationSummary memory);
+
     // returns (...)가 붙은 non-view 함수도 가능하며, 상태를 바꾸고 새 상태를 반환할 수 있음
     function syncState() external returns (VESTArTypes.ElectionState);
 
@@ -73,6 +84,8 @@ interface IVESTArElectionLifecycle {
 
     // 플랫폼 owner/admin이 내부 팀 관리자에게 key reveal 권한을 위임
     function setRevealManager(address manager, bool allowed) external;
+
+    function cancelElection() external;
 
     function cancelBeforeStart() external;
 

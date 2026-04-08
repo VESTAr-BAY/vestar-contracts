@@ -54,6 +54,10 @@ contract VESTArPrivateVoteModuleHarness is VESTArPrivateVoteModuleImpl {
     function totalCollectedAmount() external view returns (uint256) {
         return _totalCollectedAmount;
     }
+
+    function trackedRefundableAmount(address voterAddress) external view returns (uint256) {
+        return _refundableAmountByVoter[voterAddress];
+    }
 }
 
 contract VESTArPrivateVoteTest is VESTArTestBase {
@@ -161,6 +165,7 @@ contract VESTArPrivateVoteTest is VESTArTestBase {
 
         assertEq(privateVoteHarness.submittedBallots(voter, 0), 1);
         assertEq(privateVoteHarness.totalCollectedAmount(), 25_000);
+        assertEq(privateVoteHarness.trackedRefundableAmount(voter), 25_000);
     }
 
     function testSubmitEncryptedVoteEmitsBackendFriendlyHashEvent() public {

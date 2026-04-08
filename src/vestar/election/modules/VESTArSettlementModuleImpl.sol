@@ -56,6 +56,59 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
         return _settlementSummary;
     }
 
+    function getRefundSummary() public view virtual returns (VESTArTypes.RefundSummary memory) {
+        return _refundSummary;
+    }
+
+    function refundableAmountOf(address voter) public view virtual returns (uint256) {
+        if (!_refundSummary.refundsEnabled) {
+            return 0;
+        }
+
+        return _refundableAmountByVoter[voter];
+    }
+
+    function refundsEnabled() public view virtual returns (bool) {
+        return _refundSummary.refundsEnabled;
+    }
+
+    function enableRefunds() public virtual {
+        _validateElectionConfig();
+        _syncStateFromClock();
+        _requirePlatformAdminOrOrganizer();
+
+        require(_config.paymentMode == VESTArTypes.PaymentMode.PAID, "VESTAr: free election");
+        require(_state != VESTArTypes.ElectionState.Scheduled, "VESTAr: not started");
+        require(_state != VESTArTypes.ElectionState.Active, "VESTAr: still active");
+        require(_totalCollectedAmount > 0, "VESTAr: no payments");
+        require(!_settlementSummary.settled, "VESTAr: already settled");
+        require(!_refundSummary.refundsEnabled, "VESTAr: refunds already enabled");
+
+        _refundSummary.paymentToken = _config.paymentToken;
+        _refundSummary.totalRefundableAmount = _totalCollectedAmount;
+        _refundSummary.totalRefundedAmount = 0;
+        _refundSummary.refundsEnabledAt = uint64(block.timestamp);
+        _refundSummary.refundsEnabledBy = msg.sender;
+        _refundSummary.refundsEnabled = true;
+
+        emit RefundsEnabled(_config.electionId, msg.sender, _refundSummary.totalRefundableAmount);
+    }
+
+    function claimRefund() public virtual returns (uint256 refundAmount) {
+        _validateElectionConfig();
+        require(_refundSummary.refundsEnabled, "VESTAr: refunds disabled");
+
+        refundAmount = _refundableAmountByVoter[msg.sender];
+        require(refundAmount > 0, "VESTAr: no refundable amount");
+
+        _refundableAmountByVoter[msg.sender] = 0;
+        _refundSummary.totalRefundedAmount += refundAmount;
+
+        IERC20(_config.paymentToken).safeTransfer(msg.sender, refundAmount);
+
+        emit RefundClaimed(_config.electionId, msg.sender, refundAmount);
+    }
+
     // 정산 관련 코드 : Finalized 이후 한 번만 실행하고, organizer가 홀수 잔차를 가져가도록 실제 송금까지 처리
     function settleRevenue() public virtual {
         _validateElectionConfig();
@@ -64,6 +117,7 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
 
         require(_state == VESTArTypes.ElectionState.Finalized, "VESTAr: not finalized");
         require(!_settlementSummary.settled, "VESTAr: already settled");
+        require(!_refundSummary.refundsEnabled, "VESTAr: refunds enabled");
 
         (uint256 platformRevenueAmount, uint256 organizerRevenueAmount) =
             _previewSettlementSplit(_totalCollectedAmount);

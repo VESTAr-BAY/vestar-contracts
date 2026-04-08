@@ -46,6 +46,7 @@ contract VESTArElection is VESTArElectionCore {
         _platformAdmin = platformAdminAddress;
         _settlementSummary.paymentToken = config.paymentToken;
         _settlementSummary.platformTreasury = platformTreasuryAddress;
+        _refundSummary.paymentToken = config.paymentToken;
         _state = VESTArTypes.ElectionState.Scheduled;
         owner = platformAdminAddress;
 
