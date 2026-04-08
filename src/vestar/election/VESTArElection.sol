@@ -15,12 +15,13 @@ contract VESTArElection is VESTArElectionCore {
 
     constructor(address initialOwner) VESTArElectionCore(initialOwner) {}
 
-    // 초기화 관련 코드 : factory가 election config / organizer / registry / treasury 연결을 한 번에 넣어줌
-    // 예시 : organizer가 createElection(config)를 호출하면 factory가 새 election을 만든 뒤
+    // 초기화 관련 코드 : factory가 election config / organizer / registry / treasury / 초기 후보 allowlist를 한 번에 넣어줌
+    // 예시 : organizer가 createElection(config, candidateHashes)를 호출하면 factory가 새 election을 만든 뒤
     // initialize(...)에서 "이 투표는 누구 것인지, 어느 karma registry를 볼지, 어떤 토큰을 받을지"를 채움
     function initialize(
         bytes32 electionId_,
         VESTArTypes.ElectionConfig calldata config,
+        bytes32[] calldata initialCandidateHashes,
         address organizerAddress,
         bool organizerVerifiedSnapshot_,
         address karmaRegistryAddress,
@@ -31,6 +32,7 @@ contract VESTArElection is VESTArElectionCore {
         require(organizerAddress != address(0), "VESTAr: organizer is zero");
         require(platformAdminAddress != address(0), "VESTAr: admin is zero");
         require(electionId_ != bytes32(0), "VESTAr: electionId is zero");
+        require(initialCandidateHashes.length > 0, "VESTAr: candidates required");
 
         // clone 배포 관련 코드 : clone은 constructor를 다시 타지 않으므로,
         // 실제 election 인스턴스의 factory 주소와 owner를 initialize에서 직접 세팅해야 함
@@ -53,6 +55,12 @@ contract VESTArElection is VESTArElectionCore {
         owner = platformAdminAddress;
 
         _validateElectionConfig();
+
+        for (uint256 i = 0; i < initialCandidateHashes.length; ++i) {
+            require(initialCandidateHashes[i] != bytes32(0), "VESTAr: candidate hash is zero");
+            _allowedCandidateHash[initialCandidateHashes[i]] = true;
+            emit CandidateAllowlistUpdated(_electionId, initialCandidateHashes[i], true);
+        }
 
         initialized = true;
 

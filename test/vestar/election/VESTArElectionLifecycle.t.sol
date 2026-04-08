@@ -22,6 +22,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("open-lifecycle"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -44,6 +45,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("cancel-before-start"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -64,6 +66,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("cancel-active-open"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -98,6 +101,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("cancel-key-revealed"),
             config,
+            _candidateHashes("WINNER"),
             organizer,
             true,
             address(mockKarmaRegistry),
@@ -127,6 +131,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("cancel-after-finalize"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -164,6 +169,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("private-lifecycle"),
             config,
+            _candidateHashes("WINNER"),
             organizer,
             true,
             address(mockKarmaRegistry),
@@ -198,6 +204,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("private-mismatch"),
             config,
+            _candidateHashes("WINNER"),
             organizer,
             true,
             address(mockKarmaRegistry),
@@ -224,6 +231,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("private-admin"),
             config,
+            _candidateHashes("WINNER"),
             organizer,
             true,
             address(mockKarmaRegistry),
@@ -249,6 +257,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("private-finalize"),
             config,
+            _candidateHashes("WINNER"),
             organizer,
             true,
             address(mockKarmaRegistry),
@@ -276,6 +285,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("metadata-edit"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -303,6 +313,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("metadata-lock"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),
@@ -328,6 +339,7 @@ contract VESTArElectionLifecycleTest is VESTArTestBase {
         election.initialize(
             bytes32("allowlist-lock"),
             config,
+            _candidateHashes("IU"),
             organizer,
             false,
             address(mockKarmaRegistry),

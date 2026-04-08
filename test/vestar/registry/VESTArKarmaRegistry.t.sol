@@ -62,11 +62,7 @@ contract VESTArKarmaRegistryTest is VESTArTestBase {
     function setUp() public {
         statusKarma = new MockStatusKarma();
         statusKarmaTiers = new MockStatusKarmaTiers();
-        karmaRegistry = new VESTArKarmaRegistry(
-            platformAdmin,
-            address(statusKarma),
-            address(statusKarmaTiers)
-        );
+        karmaRegistry = new VESTArKarmaRegistry(platformAdmin, address(statusKarma), address(statusKarmaTiers));
     }
 
     function testStatusKarmaSourcesCanBeUpdatedByOwner() public {

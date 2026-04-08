@@ -6,7 +6,6 @@ import {IVESTArAdminControl} from "./IVESTArAdminControl.sol";
 // Status Karma와 KarmaTiers를 읽어서 VESTAr 쪽 eligibility 판정을 돕는 인터페이스
 
 interface IVESTArKarmaRegistry is IVESTArAdminControl {
-
     // 우리 KarmaRegistry가 지금 어떤 Status 쪽 컨트랙트들을 기준으로 보고 있는지 바뀌었을 때, 그 변경 사실을 체인 로그로 남김
     event StatusKarmaSourceUpdated(address indexed karmaContract, address indexed karmaTiersContract);
 

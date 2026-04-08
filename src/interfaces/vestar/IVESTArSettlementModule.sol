@@ -17,18 +17,10 @@ interface IVESTArSettlementModule {
     );
 
     // organizer/admin이 "이 election은 정산 대신 각 유저가 직접 환불받게 한다"를 활성화할 때 남기는 이벤트
-    event RefundsEnabled(
-        bytes32 indexed electionId,
-        address indexed enabledBy,
-        uint256 totalRefundableAmount
-    );
+    event RefundsEnabled(bytes32 indexed electionId, address indexed enabledBy, uint256 totalRefundableAmount);
 
     // 유저가 자기 지갑으로 직접 환불을 수령했을 때 남기는 이벤트
-    event RefundClaimed(
-        bytes32 indexed electionId,
-        address indexed voter,
-        uint256 refundAmount
-    );
+    event RefundClaimed(bytes32 indexed electionId, address indexed voter, uint256 refundAmount);
 
     // FREE / PAID 모드를 enum으로 읽음
     function paymentMode() external view returns (VESTArTypes.PaymentMode);
