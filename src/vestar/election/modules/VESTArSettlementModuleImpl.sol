@@ -91,7 +91,7 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
         _refundSummary.refundsEnabledBy = msg.sender;
         _refundSummary.refundsEnabled = true;
 
-        emit RefundsEnabled(_config.electionId, msg.sender, _refundSummary.totalRefundableAmount);
+        emit RefundsEnabled(_electionId, msg.sender, _refundSummary.totalRefundableAmount);
     }
 
     function claimRefund() public virtual returns (uint256 refundAmount) {
@@ -106,7 +106,7 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
 
         IERC20(_config.paymentToken).safeTransfer(msg.sender, refundAmount);
 
-        emit RefundClaimed(_config.electionId, msg.sender, refundAmount);
+        emit RefundClaimed(_electionId, msg.sender, refundAmount);
     }
 
     // 정산 관련 코드 : Finalized 이후 한 번만 실행하고, organizer가 홀수 잔차를 가져가도록 실제 송금까지 처리
@@ -119,8 +119,7 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
         require(!_settlementSummary.settled, "VESTAr: already settled");
         require(!_refundSummary.refundsEnabled, "VESTAr: refunds enabled");
 
-        (uint256 platformRevenueAmount, uint256 organizerRevenueAmount) =
-            _previewSettlementSplit(_totalCollectedAmount);
+        (uint256 platformRevenueAmount, uint256 organizerRevenueAmount) = _previewSettlementSplit(_totalCollectedAmount);
 
         _settlementSummary.paymentToken = _config.paymentToken;
         _settlementSummary.totalRevenueAmount = _totalCollectedAmount;
@@ -143,7 +142,7 @@ abstract contract VESTArSettlementModuleImpl is VESTArElectionStorage, IVESTArSe
         }
 
         emit RevenueSettled(
-            _config.electionId,
+            _electionId,
             _settlementSummary.platformTreasury,
             _organizer,
             _settlementSummary.totalRevenueAmount,

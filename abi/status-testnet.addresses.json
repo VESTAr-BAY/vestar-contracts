@@ -2,9 +2,9 @@
   "chainName": "Status Network Testnet",
   "chainId": 1660990954,
   "rpcUrl": "https://public.sepolia.rpc.status.network",
-  "OrganizerRegistry": "0x6b6F30c54F0a382328409941A8eB824D02EFCD8f",
-  "KarmaRegistry": "0x9880c7Ff7Be22A1B2e469E594157eE6C14604472",
-  "ElectionImplementation": "0x93ec16287D1da13b4af58f3F0B9D717cae8b4A8A",
-  "VESTArElectionFactory": "0xE9e5AE2892542fd736b5391f0a722C641DC1fEDe",
-  "MockUSDT": "0x3a91A1b0bF95eE4e3F4e2F3F2A386995D884ee1d"
+  "OrganizerRegistry": "0xebfABbb617a2bEA8dc2BD5C85ED6CAFdfBaa01F4",
+  "KarmaRegistry": "0x5e2609C80df13da46c1A9C65A5FF969518913609",
+  "ElectionImplementation": "0xE8b78126a720b8C7A35D0EC667faB1dAA53B2523",
+  "VESTArElectionFactory": "0xeEb174bE8A72aA4dDEd6A4f68b0055Ba0Ba446b3",
+  "MockUSDT": "0xF962A46C1d73440D58efb6b398Eeed6BBb0019Fd"
 }

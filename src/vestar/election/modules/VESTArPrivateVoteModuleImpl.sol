@@ -25,13 +25,7 @@ abstract contract VESTArPrivateVoteModuleImpl is VESTArElectionStorage, IVESTArP
         _recordBallotSubmission(msg.sender, uint64(block.timestamp));
         uint256 paymentAmount = _collectPaymentFrom(msg.sender, 1);
 
-        emit EncryptedVoteSubmitted(
-            _config.electionId,
-            msg.sender,
-            _hashEncryptedBallot(encryptedBallot),
-            1,
-            paymentAmount
-        );
+        emit EncryptedVoteSubmitted(_electionId, msg.sender, _hashEncryptedBallot(encryptedBallot), 1, paymentAmount);
     }
 
     // 프론트 관련 코드 : private 투표 화면이 이 공개키를 읽어 ballot 암호화에 사용

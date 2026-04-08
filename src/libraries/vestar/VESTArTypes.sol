@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 // VESTAr 전역에서 같이 쓰는 enum / struct 타입들을 한 곳에 모아두는 파일
 library VESTArTypes {
-
     enum VisibilityMode {
         OPEN,
         PRIVATE
@@ -56,7 +55,6 @@ library VESTArTypes {
 
     // ElectionConfig는 투표를 만들 때 필요한 핵심 설정 묶음
     struct ElectionConfig {
-        bytes32 electionId;
         // seriesId: "MAMA 2025" 같은 상위 이벤트/시리즈 식별자
         // 예: female solo, male solo election이 같은 seriesId를 공유
         bytes32 seriesId;

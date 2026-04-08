@@ -19,6 +19,7 @@ contract VESTArElection is VESTArElectionCore {
     // 예시 : organizer가 createElection(config)를 호출하면 factory가 새 election을 만든 뒤
     // initialize(...)에서 "이 투표는 누구 것인지, 어느 karma registry를 볼지, 어떤 토큰을 받을지"를 채움
     function initialize(
+        bytes32 electionId_,
         VESTArTypes.ElectionConfig calldata config,
         address organizerAddress,
         bool organizerVerifiedSnapshot_,
@@ -29,7 +30,7 @@ contract VESTArElection is VESTArElectionCore {
         require(!initialized, "VESTAr: already initialized");
         require(organizerAddress != address(0), "VESTAr: organizer is zero");
         require(platformAdminAddress != address(0), "VESTAr: admin is zero");
-        require(config.electionId != bytes32(0), "VESTAr: electionId is zero");
+        require(electionId_ != bytes32(0), "VESTAr: electionId is zero");
 
         // clone 배포 관련 코드 : clone은 constructor를 다시 타지 않으므로,
         // 실제 election 인스턴스의 factory 주소와 owner를 initialize에서 직접 세팅해야 함
@@ -39,6 +40,7 @@ contract VESTArElection is VESTArElectionCore {
 
         require(msg.sender == factory, "VESTAr: only factory");
 
+        _electionId = electionId_;
         _config = config;
         _organizer = organizerAddress;
         _organizerVerifiedSnapshot = organizerVerifiedSnapshot_;
@@ -58,7 +60,7 @@ contract VESTArElection is VESTArElectionCore {
 
         emit ElectionInitialized(
             config.seriesId,
-            config.electionId,
+            electionId_,
             organizerAddress,
             config.visibilityMode,
             organizerVerifiedSnapshot_,
@@ -85,9 +87,7 @@ contract VESTArElection is VESTArElectionCore {
         _config.candidateManifestHash = newCandidateManifestHash;
         _config.candidateManifestURI = newCandidateManifestURI;
 
-        emit ElectionMetadataUpdated(
-            _config.electionId, newTitleHash, newCandidateManifestHash, newCandidateManifestURI
-        );
+        emit ElectionMetadataUpdated(_electionId, newTitleHash, newCandidateManifestHash, newCandidateManifestURI);
     }
 
     // 후보 등록 관련 코드 : organizer/admin이 투표 시작 전에 후보 hash allowlist를 세팅
@@ -99,7 +99,7 @@ contract VESTArElection is VESTArElectionCore {
 
         for (uint256 i = 0; i < candidateHashes.length; ++i) {
             _allowedCandidateHash[candidateHashes[i]] = allowed;
-            emit CandidateAllowlistUpdated(_config.electionId, candidateHashes[i], allowed);
+            emit CandidateAllowlistUpdated(_electionId, candidateHashes[i], allowed);
         }
     }
 

@@ -33,11 +33,11 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         organizerRegistry.setVerification(organizer, true, 100, 0);
 
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("verified-open"),
-            bytes32("verified-series"),
-            keccak256("factory-open-vote"),
-            VESTArTypes.PaymentMode.PAID,
-            25_000
+            bytes32("verified-series"), keccak256("factory-open-vote"), VESTArTypes.PaymentMode.PAID, 25_000
+        );
+
+        bytes32 expectedElectionId = electionFactory.previewNextElectionId(
+            organizer, config.seriesId, config.titleHash, config.startAt, config.endAt
         );
 
         vm.prank(organizer);
@@ -45,7 +45,8 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
 
         VESTArElection election = VESTArElection(electionAddress);
 
-        assertEq(electionFactory.getElection(config.electionId), electionAddress);
+        assertEq(electionFactory.getElection(expectedElectionId), electionAddress);
+        assertEq(election.electionId(), expectedElectionId);
         assertEq(election.seriesId(), config.seriesId);
         assertEq(election.organizer(), organizer);
         assertEq(election.platformAdmin(), platformAdmin);
@@ -57,11 +58,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
 
     function testUnverifiedOrganizerWithZeroKarmaCannotCreateElection() public {
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("unverified-open"),
-            bytes32("unverified-series"),
-            keccak256("factory-open-vote"),
-            VESTArTypes.PaymentMode.FREE,
-            0
+            bytes32("unverified-series"), keccak256("factory-open-vote"), VESTArTypes.PaymentMode.FREE, 0
         );
 
         vm.prank(organizer);
@@ -73,13 +70,8 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         // 실제 사례 : verified가 아니더라도 카르마 티어 1 이상이면 organizer 생성 허용
         mockKarmaRegistry.setTier(organizer, 1);
 
-        VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("karma-open"),
-            bytes32("karma-series"),
-            keccak256("factory-open-vote"),
-            VESTArTypes.PaymentMode.FREE,
-            0
-        );
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(bytes32("karma-series"), keccak256("factory-open-vote"), VESTArTypes.PaymentMode.FREE, 0);
 
         vm.prank(organizer);
         address electionAddress = electionFactory.createElection(config);
@@ -98,11 +90,7 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         organizerRegistry.setVerification(organizer, true, 100, 0);
 
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("snapshot-open"),
-            bytes32("snapshot-series"),
-            keccak256("factory-open-vote"),
-            VESTArTypes.PaymentMode.FREE,
-            0
+            bytes32("snapshot-series"), keccak256("factory-open-vote"), VESTArTypes.PaymentMode.FREE, 0
         );
 
         vm.prank(organizer);
@@ -123,20 +111,26 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
 
         bytes32 mamaSeriesId = bytes32("mama-2025");
 
-        VESTArTypes.ElectionConfig memory femaleSoloConfig = _buildOpenConfig(
-            bytes32("mama-female-solo"),
-            mamaSeriesId,
-            keccak256("female-solo"),
-            VESTArTypes.PaymentMode.FREE,
-            0
-        );
+        VESTArTypes.ElectionConfig memory femaleSoloConfig =
+            _buildOpenConfig(mamaSeriesId, keccak256("female-solo"), VESTArTypes.PaymentMode.FREE, 0);
 
-        VESTArTypes.ElectionConfig memory maleSoloConfig = _buildOpenConfig(
-            bytes32("mama-male-solo"),
-            mamaSeriesId,
-            keccak256("male-solo"),
-            VESTArTypes.PaymentMode.FREE,
-            0
+        VESTArTypes.ElectionConfig memory maleSoloConfig =
+            _buildOpenConfig(mamaSeriesId, keccak256("male-solo"), VESTArTypes.PaymentMode.FREE, 0);
+
+        bytes32 expectedFemaleElectionId = electionFactory.previewNextElectionId(
+            organizer,
+            femaleSoloConfig.seriesId,
+            femaleSoloConfig.titleHash,
+            femaleSoloConfig.startAt,
+            femaleSoloConfig.endAt
+        );
+        bytes32 expectedMaleElectionId = electionFactory.computeElectionId(
+            organizer,
+            maleSoloConfig.seriesId,
+            maleSoloConfig.titleHash,
+            maleSoloConfig.startAt,
+            maleSoloConfig.endAt,
+            1
         );
 
         vm.startPrank(organizer);
@@ -150,14 +144,38 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         assertEq(electionFactory.totalElectionsInSeries(mamaSeriesId), 2);
         assertEq(electionIds.length, 2);
         assertEq(electionAddresses.length, 2);
-        assertEq(electionIds[0], femaleSoloConfig.electionId);
-        assertEq(electionIds[1], maleSoloConfig.electionId);
+        assertEq(electionIds[0], expectedFemaleElectionId);
+        assertEq(electionIds[1], expectedMaleElectionId);
         assertEq(electionAddresses[0], femaleSoloElection);
         assertEq(electionAddresses[1], maleSoloElection);
     }
 
+    function testFactoryGeneratesUniqueElectionIdsForRepeatedConfig() public {
+        vm.prank(platformAdmin);
+        organizerRegistry.setVerification(organizer, true, 100, 0);
+
+        VESTArTypes.ElectionConfig memory config =
+            _buildOpenConfig(bytes32("repeat-series"), keccak256("repeat-title"), VESTArTypes.PaymentMode.FREE, 0);
+
+        bytes32 expectedFirstElectionId = electionFactory.previewNextElectionId(
+            organizer, config.seriesId, config.titleHash, config.startAt, config.endAt
+        );
+        bytes32 expectedSecondElectionId = electionFactory.computeElectionId(
+            organizer, config.seriesId, config.titleHash, config.startAt, config.endAt, 1
+        );
+
+        vm.startPrank(organizer);
+        address firstElectionAddress = electionFactory.createElection(config);
+        address secondElectionAddress = electionFactory.createElection(config);
+        vm.stopPrank();
+
+        assertTrue(expectedFirstElectionId != expectedSecondElectionId);
+        assertEq(electionFactory.getElection(expectedFirstElectionId), firstElectionAddress);
+        assertEq(electionFactory.getElection(expectedSecondElectionId), secondElectionAddress);
+        assertEq(electionFactory.nextElectionNonce(organizer), 2);
+    }
+
     function _buildOpenConfig(
-        bytes32 electionId_,
         bytes32 seriesId_,
         bytes32 titleHash_,
         VESTArTypes.PaymentMode paymentMode_,
@@ -166,7 +184,6 @@ contract VESTArElectionFactoryTest is VESTArTestBase {
         address paymentToken = paymentMode_ == VESTArTypes.PaymentMode.PAID ? address(mockUSDT) : address(0);
 
         return VESTArTypes.ElectionConfig({
-            electionId: electionId_,
             seriesId: seriesId_,
             visibilityMode: VESTArTypes.VisibilityMode.OPEN,
             titleHash: titleHash_,

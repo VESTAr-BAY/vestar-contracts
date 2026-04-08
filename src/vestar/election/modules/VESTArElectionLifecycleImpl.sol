@@ -10,7 +10,7 @@ import {VESTArElectionStorage} from "../base/VESTArElectionStorage.sol";
 abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArElectionLifecycle {
     // 상태 조회 관련 코드 : election 식별자
     function electionId() public view virtual returns (bytes32) {
-        return _config.electionId;
+        return _electionId;
     }
 
     // 상태 조회 관련 코드 : 같은 이벤트 화면에 묶이는 상위 series 식별자
@@ -73,7 +73,7 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
 
         if (previousState != nextState) {
             _state = nextState;
-            emit ElectionStateUpdated(_config.electionId, previousState, nextState);
+            emit ElectionStateUpdated(_electionId, previousState, nextState);
         }
 
         return _state;
@@ -89,12 +89,10 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         require(currentState != VESTArTypes.ElectionState.Finalized, "VESTAr: already finalized");
 
         _cancellationSummary = VESTArTypes.CancellationSummary({
-            cancelledBy: msg.sender,
-            cancelledAt: uint64(block.timestamp),
-            previousState: currentState
+            cancelledBy: msg.sender, cancelledAt: uint64(block.timestamp), previousState: currentState
         });
 
-        emit ElectionCancelled(_config.electionId, msg.sender, currentState, uint64(block.timestamp));
+        emit ElectionCancelled(_electionId, msg.sender, currentState, uint64(block.timestamp));
         _transitionState(VESTArTypes.ElectionState.Cancelled);
     }
 
@@ -108,10 +106,7 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         _requirePlatformAdminOrOrganizer();
         require(syncState() == VESTArTypes.ElectionState.Active, "VESTAr: not active");
 
-        if (
-            _config.visibilityMode == VESTArTypes.VisibilityMode.PRIVATE
-                && block.timestamp >= _config.resultRevealAt
-        ) {
+        if (_config.visibilityMode == VESTArTypes.VisibilityMode.PRIVATE && block.timestamp >= _config.resultRevealAt) {
             _transitionState(VESTArTypes.ElectionState.KeyRevealPending);
             return;
         }
@@ -128,13 +123,10 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         require(_isRevealManager(msg.sender), "VESTAr: not reveal manager");
         require(syncState() == VESTArTypes.ElectionState.KeyRevealPending, "VESTAr: reveal not ready");
         require(_revealedPrivateKey.length == 0, "VESTAr: key already revealed");
-        require(
-            keccak256(privateKeyData) == _config.privateKeyCommitmentHash,
-            "VESTAr: commitment mismatch"
-        );
+        require(keccak256(privateKeyData) == _config.privateKeyCommitmentHash, "VESTAr: commitment mismatch");
 
         _revealedPrivateKey = privateKeyData;
-        emit PrivateKeyRevealed(_config.electionId, _config.privateKeyCommitmentHash, privateKeyData);
+        emit PrivateKeyRevealed(_electionId, _config.privateKeyCommitmentHash, privateKeyData);
         _transitionState(VESTArTypes.ElectionState.KeyRevealed);
     }
 
@@ -153,14 +145,14 @@ abstract contract VESTArElectionLifecycleImpl is VESTArElectionStorage, IVESTArE
         }
 
         _resultSummary = resultSummary;
-        emit ResultFinalized(_config.electionId, resultSummary.resultManifestHash, resultSummary.resultManifestURI);
+        emit ResultFinalized(_electionId, resultSummary.resultManifestHash, resultSummary.resultManifestURI);
         _transitionState(VESTArTypes.ElectionState.Finalized);
     }
 
     // 투표 상태 관련 코드 : state 변경 이벤트를 한 곳에서만 찍게 묶어 두는 내부 helper
     function _transitionState(VESTArTypes.ElectionState nextState) internal {
         if (_state != nextState) {
-            emit ElectionStateUpdated(_config.electionId, _state, nextState);
+            emit ElectionStateUpdated(_electionId, _state, nextState);
             _state = nextState;
         }
     }

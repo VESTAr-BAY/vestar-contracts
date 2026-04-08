@@ -38,7 +38,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         // 3) 유저가 ["IU", "ParkHyoShin"] 다중 선택 ballot 1개를 제출
         // 4) 종료 후 organizer가 결과를 finalize하고 수익을 50:50 정산
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("open-e2e"),
             bytes32("mama-2025"),
             keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
@@ -103,7 +102,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         bytes32 mamaSeriesId = bytes32("mama-2025");
 
         VESTArTypes.ElectionConfig memory femaleSoloConfig = _buildOpenConfig(
-            bytes32("mama-female-solo"),
             mamaSeriesId,
             keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
@@ -112,12 +110,27 @@ contract VESTArEndToEndTest is VESTArTestBase {
         );
 
         VESTArTypes.ElectionConfig memory maleSoloConfig = _buildOpenConfig(
-            bytes32("mama-male-solo"),
             mamaSeriesId,
             keccak256("male-solo"),
             uint64(block.timestamp + 1 days),
             uint64(block.timestamp + 2 days),
             25_001
+        );
+
+        bytes32 expectedFemaleElectionId = electionFactory.previewNextElectionId(
+            organizer,
+            femaleSoloConfig.seriesId,
+            femaleSoloConfig.titleHash,
+            femaleSoloConfig.startAt,
+            femaleSoloConfig.endAt
+        );
+        bytes32 expectedMaleElectionId = electionFactory.computeElectionId(
+            organizer,
+            maleSoloConfig.seriesId,
+            maleSoloConfig.titleHash,
+            maleSoloConfig.startAt,
+            maleSoloConfig.endAt,
+            1
         );
 
         vm.startPrank(organizer);
@@ -131,8 +144,8 @@ contract VESTArEndToEndTest is VESTArTestBase {
         assertEq(electionFactory.totalElectionsInSeries(mamaSeriesId), 2);
         assertEq(electionIds.length, 2);
         assertEq(electionAddresses.length, 2);
-        assertEq(electionIds[0], femaleSoloConfig.electionId);
-        assertEq(electionIds[1], maleSoloConfig.electionId);
+        assertEq(electionIds[0], expectedFemaleElectionId);
+        assertEq(electionIds[1], expectedMaleElectionId);
         assertEq(electionAddresses[0], femaleSoloElection);
         assertEq(electionAddresses[1], maleSoloElection);
         assertEq(VESTArElection(femaleSoloElection).seriesId(), mamaSeriesId);
@@ -144,7 +157,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         // 주최자는 시작 전에 후보 목록을 준비할 수 있지만,
         // 투표가 열린 뒤에는 프론트/백엔드 집계 기준이 흔들리지 않게 수정이 막혀야 함
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("lock-after-start"),
             bytes32("mama-2025"),
             keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
@@ -176,7 +188,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         bytes memory privateKeyData = hex"0123456789";
 
         VESTArTypes.ElectionConfig memory config = _buildPrivateConfig(
-            bytes32("private-e2e"),
             bytes32("mma-2025"),
             keccak256("winner-vote"),
             uint64(block.timestamp + 1 days),
@@ -229,7 +240,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         // 2) 프론트는 getElectionConfig를 읽어서 shared seriesId와 category titleHash를 함께 가져간다
         bytes32 mamaSeriesId = bytes32("mama-2025");
         VESTArTypes.ElectionConfig memory config = _buildOpenConfig(
-            bytes32("front-read"),
             mamaSeriesId,
             keccak256("female-solo"),
             uint64(block.timestamp + 1 days),
@@ -251,8 +261,11 @@ contract VESTArEndToEndTest is VESTArTestBase {
         election.setCandidateAllowlist(candidateHashes, true);
 
         VESTArTypes.ElectionConfig memory storedConfig = election.getElectionConfig();
+        bytes32 expectedElectionId = electionFactory.computeElectionId(
+            organizer, config.seriesId, config.titleHash, config.startAt, config.endAt, 0
+        );
 
-        assertEq(storedConfig.electionId, bytes32("front-read"));
+        assertEq(election.electionId(), expectedElectionId);
         assertEq(storedConfig.seriesId, mamaSeriesId);
         assertEq(storedConfig.titleHash, keccak256("female-solo"));
         assertEq(storedConfig.candidateManifestURI, "ipfs://open-candidates");
@@ -260,7 +273,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
     }
 
     function _buildOpenConfig(
-        bytes32 electionId_,
         bytes32 seriesId_,
         bytes32 titleHash_,
         uint64 startAt_,
@@ -268,7 +280,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         uint256 costPerBallot_
     ) internal view returns (VESTArTypes.ElectionConfig memory) {
         return VESTArTypes.ElectionConfig({
-            electionId: electionId_,
             seriesId: seriesId_,
             visibilityMode: VESTArTypes.VisibilityMode.OPEN,
             titleHash: titleHash_,
@@ -293,7 +304,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
     }
 
     function _buildPrivateConfig(
-        bytes32 electionId_,
         bytes32 seriesId_,
         bytes32 titleHash_,
         uint64 startAt_,
@@ -303,7 +313,6 @@ contract VESTArEndToEndTest is VESTArTestBase {
         bytes32 commitmentHash
     ) internal view returns (VESTArTypes.ElectionConfig memory) {
         return VESTArTypes.ElectionConfig({
-            electionId: electionId_,
             seriesId: seriesId_,
             visibilityMode: VESTArTypes.VisibilityMode.PRIVATE,
             titleHash: titleHash_,
@@ -327,11 +336,7 @@ contract VESTArEndToEndTest is VESTArTestBase {
         });
     }
 
-    function _resultSummary(string memory resultManifestUri)
-        internal
-        pure
-        returns (VESTArTypes.ResultSummary memory)
-    {
+    function _resultSummary(string memory resultManifestUri) internal pure returns (VESTArTypes.ResultSummary memory) {
         return VESTArTypes.ResultSummary({
             resultManifestHash: keccak256(bytes(resultManifestUri)),
             resultManifestURI: resultManifestUri,

@@ -25,9 +25,9 @@ interface IVESTArElectionFactory is IVESTArAdminControl {
 
     // 어떤 karma registry를 참조하는지 조회
     // karma registry : 유저의 Karma 기반 참여 자격을 판정하는 기준점
-        // Status의 Karma, KarmaTiers를 읽음
-        // 어떤 주소가 몇 티어인지 계산
-        // 최소 티어 이상인지 판정
+    // Status의 Karma, KarmaTiers를 읽음
+    // 어떤 주소가 몇 티어인지 계산
+    // 최소 티어 이상인지 판정
     // 바로 Status 컨트랙트를 안 보는 이유 : 의존성을 한 레이어 감싸서 추상화
     function karmaRegistry() external view returns (address);
 
@@ -52,6 +52,25 @@ interface IVESTArElectionFactory is IVESTArAdminControl {
     // 같은 상위 이벤트/시리즈에 속한 election 개수
     function totalElectionsInSeries(bytes32 seriesId) external view returns (uint256);
 
+    // organizer가 다음 create에서 사용할 nonce를 조회
+    function nextElectionNonce(address organizer) external view returns (uint256);
+
+    // 현재 nonce 기준으로 다음 electionId를 미리 계산
+    function previewNextElectionId(address organizer, bytes32 seriesId, bytes32 titleHash, uint64 startAt, uint64 endAt)
+        external
+        view
+        returns (bytes32 electionId);
+
+    // 특정 nonce를 넣어 electionId를 계산
+    function computeElectionId(
+        address organizer,
+        bytes32 seriesId,
+        bytes32 titleHash,
+        uint64 startAt,
+        uint64 endAt,
+        uint256 organizerNonce
+    ) external view returns (bytes32 electionId);
+
     // config struct 하나를 받아 새 election을 생성
     function createElection(VESTArTypes.ElectionConfig calldata config) external returns (address electionAddress);
 
@@ -59,14 +78,8 @@ interface IVESTArElectionFactory is IVESTArAdminControl {
     function getElection(bytes32 electionId) external view returns (address electionAddress);
 
     // 같은 seriesId를 공유하는 electionId 목록 조회
-    function getSeriesElectionIds(bytes32 seriesId)
-        external
-        view
-        returns (bytes32[] memory electionIds);
+    function getSeriesElectionIds(bytes32 seriesId) external view returns (bytes32[] memory electionIds);
 
     // 같은 seriesId를 공유하는 election address 목록 조회
-    function getSeriesElectionAddresses(bytes32 seriesId)
-        external
-        view
-        returns (address[] memory electionAddresses);
+    function getSeriesElectionAddresses(bytes32 seriesId) external view returns (address[] memory electionAddresses);
 }
