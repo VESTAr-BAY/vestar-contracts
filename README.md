@@ -1,67 +1,159 @@
 # VESTAr Contracts
 
+Smart-contract stack for organizer gating, clone-based election deployment, open/private voting, and settlement on Status Network Testnet.
+
 ## English
 
 ### Overview
 
-VESTAr is a platform that provides a transparent voting system for K-pop fans.  
-This repository contains the implemented MVP smart contract stack that powers the VESTAr platform on Status Network, along with tests, deployment scripts, and ABI handoff files.
+This repository contains the current VESTAr on-chain runtime used by the frontend and backend.
 
-The operational rule is simple:
+- `VESTArOrganizerRegistry` stores organizer profile data and verification state.
+- `VESTArKarmaRegistry` reads Status `Karma` and `KarmaTiers` and translates eligibility.
+- `VESTArElectionFactory` validates organizer eligibility and deploys election clones.
+- `VESTArElection` is the per-election runtime assembled from lifecycle, eligibility, open vote, private vote, and settlement modules.
+- `MockUSDT` is the 6-decimal ERC20 used for paid-vote flows on testnet.
 
-- the backend prepares election drafts and private-election crypto material
-- the organizer wallet signs `createElection(config)`
-- voters submit ballots from their own wallets
-- the chain remains the final source of truth
+### Contract Topology
 
-### Implemented MVP Rules
+```mermaid
+flowchart LR
+  Admin[Platform admin]
+  Organizer[Organizer wallet]
+  Voter[Voter wallet]
+  Status[Status Karma + KarmaTiers]
+  OrgReg[VESTArOrganizerRegistry]
+  KarmaReg[VESTArKarmaRegistry]
+  Factory[VESTArElectionFactory]
+  Impl[VESTArElection implementation]
+  MockUSDT[MockUSDT]
+  Worker[Backend workers / indexer]
 
-- `VisibilityMode.OPEN` and `VisibilityMode.PRIVATE`
-- `PaymentMode.FREE` and `PaymentMode.PAID`
-- `BallotPolicy.ONE_PER_ELECTION`, `BallotPolicy.ONE_PER_INTERVAL`, and `BallotPolicy.UNLIMITED_PAID`
-- ERC20 ballot pricing through `costPerBallot`
-- optional `resetInterval` windows when `BallotPolicy.ONE_PER_INTERVAL` is selected
-- one successful transaction = one ballot
-- multi-choice ballots still cost one ballot, not one vote per candidate
-- open ballots reject duplicate candidate selections on-chain
-- private ballots are encrypted on the client and validated after reveal
-- `ONE_PER_ELECTION` means one ballot for the entire election
-- `UNLIMITED_PAID` means unlimited paid single-choice voting mode
-- revenue settlement is 50:50 between platform treasury and organizer
-- odd remainder goes to the organizer
-- verified organizers can create elections with karma `0`
-- unverified organizers require karma tier `>= 1`
-- each election carries a shared `seriesId` so multiple category elections can be grouped under one organizer event
+  subgraph Election[VESTArElection clone]
+    Life[Lifecycle]
+    Elig[Eligibility]
+    Open[Open vote]
+    Private[Private vote]
+    Settle[Settlement]
+  end
 
-### Contract Architecture
+  Admin --> OrgReg
+  Admin --> KarmaReg
+  Admin --> Factory
+  Organizer --> OrgReg
+  Organizer --> Factory
+  Status --> KarmaReg
+  OrgReg --> Factory
+  KarmaReg --> Factory
+  Factory -->|clone from| Impl
+  Factory -->|initialize| Election
+  Voter --> Election
+  MockUSDT --> Election
+  Worker --> Election
+```
 
-- `OrganizerRegistry`
-  organizer profile, verification state, and election creation eligibility
-- `KarmaRegistry`
-  adapter for Status `Karma` and `KarmaTiers`
-- `ElectionFactory`
-  validates organizer eligibility, clones election instances, records canonical election addresses
-- `ElectionImplementation`
-  template contract used by the factory for clone deployment
-- `VESTArElection`
-  the actual per-election runtime contract users interact with
-- `MockUSDT`
-  6-decimal ERC20 used for local/testnet paid-vote flows
+### Runtime Modules
 
-### Main On-Chain Features
+| Module | Responsibility |
+| --- | --- |
+| `Lifecycle` | State calculation, `syncState`, cancel, close, key reveal, finalize |
+| `Eligibility` | Karma checks, ballot-period rules, remaining ballot calculation |
+| `Open vote` | Plaintext candidate submission, duplicate detection, candidate allowlist, live on-chain tallies |
+| `Private vote` | Ciphertext submission, public key getters, commitment-based reveal path |
+| `Settlement` | ERC20 collection, 50:50 revenue split, refunds |
+| `Factory` | Organizer eligibility checks, clone deployment, canonical `ElectionCreated` event |
 
-- election lifecycle:
-  `Scheduled -> Active -> Closed -> KeyRevealPending -> KeyRevealed -> Finalized`
-- open voting:
-  plaintext candidate selection with on-chain validation and live tallies
-- private voting:
-  encrypted ballot submission, commitment-based private key reveal, post-reveal verification
-- settlement:
-  ERC20 collection during voting and final split after result finalization
-- series grouping:
-  multiple elections such as `female solo` / `male solo` can share one `seriesId` like `MAMA 2025`
+### Sequence: Organizer Eligibility And Election Creation
 
-### Repository Layout
+```mermaid
+sequenceDiagram
+  actor Organizer
+  participant OrgReg as OrganizerRegistry
+  participant KarmaReg as KarmaRegistry
+  participant Factory as ElectionFactory
+  participant Impl as ElectionImplementation
+  participant Election as VESTArElection clone
+
+  Organizer->>OrgReg: upsertOrganizerProfile(...)
+  Organizer->>Factory: createElection(config, initialCandidateHashes)
+  Factory->>OrgReg: isVerified(...) / canCreateElection(...)
+  Factory->>KarmaReg: tierIdOf(...)
+  Factory->>Impl: clone()
+  Factory->>Election: initialize(electionId, config, hashes, organizer, ...)
+  Election-->>Factory: initialized runtime instance
+  Factory-->>Organizer: tx receipt
+  Factory-->>Organizer: ElectionCreated(seriesId, electionId, electionAddress, ...)
+```
+
+### Sequence: Ballot Submission
+
+```mermaid
+sequenceDiagram
+  actor Voter
+  participant Token as MockUSDT / ERC20
+  participant Election as VESTArElection
+
+  alt OPEN election
+    Voter->>Election: submitOpenVote(candidateKeys)
+    Election->>Election: syncState + canSubmitBallot + allowlist checks
+    opt paid ballot
+      Election->>Token: transferFrom(voter, election, costPerBallot)
+    end
+    Election->>Election: increment candidate tallies
+    Election-->>Voter: OpenVoteSubmitted(...)
+  else PRIVATE election
+    Voter->>Election: submitEncryptedVote(encryptedBallot)
+    Election->>Election: syncState + canSubmitBallot + ciphertext presence check
+    opt paid ballot
+      Election->>Token: transferFrom(voter, election, costPerBallot)
+    end
+    Election-->>Voter: EncryptedVoteSubmitted(...)
+  end
+```
+
+### Sequence: Lifecycle, Reveal, Finalize, Settlement
+
+```mermaid
+sequenceDiagram
+  participant Worker as backend workers
+  actor Admin as platform admin / organizer
+  participant Election as VESTArElection
+  participant Token as ERC20 treasury flow
+
+  Worker->>Election: syncState()
+  Election-->>Worker: Scheduled / Active / Closed / KeyRevealPending / KeyRevealed / Finalized
+
+  alt PRIVATE election after resultRevealAt
+    Worker->>Election: revealPrivateKey(privateKeyData)
+    Election-->>Worker: PrivateKeyRevealed + state=KeyRevealed
+  end
+
+  Admin->>Election: finalizeResults(resultSummary)
+  Election-->>Admin: ResultFinalized(...)
+
+  opt paid election and no refunds
+    Admin->>Election: settleRevenue()
+    Election->>Token: transfer 50% to platform treasury
+    Election->>Token: transfer 50% remainder to organizer
+    Election-->>Admin: RevenueSettled(...)
+  end
+```
+
+### On-Chain Rules Checked In Code
+
+- `seriesId` must be non-zero and the initial candidate hash list must be non-empty.
+- `startAt < endAt` and `resultRevealAt >= endAt` are enforced in config validation.
+- `FREE` elections must use zero cost. `PAID` elections must set a token address and positive price.
+- `PRIVATE` elections must set a public key, a private-key commitment hash, and `keySchemeVersion == 1`.
+- `ONE_PER_INTERVAL` requires a positive `resetInterval`.
+- `UNLIMITED_PAID` is single-choice only and currently hard-checks `costPerBallot == 66_000`.
+- Verified organizers can create elections with karma tier `0`. Unverified organizers need tier `>= 1`.
+- Open ballots reject duplicate candidate selections on-chain.
+- `revealPrivateKey(bytes)` is restricted to the platform admin or delegated reveal managers.
+- `finalizeResults(...)` requires `Closed` for `OPEN` elections and `KeyRevealed` for `PRIVATE` elections.
+- Revenue splits 50:50, with odd remainder flowing to the organizer.
+
+### Repository Map
 
 ```text
 contracts/
@@ -78,44 +170,31 @@ contracts/
 │  ├─ DeployVESTArStack.s.sol
 │  └─ SyncStatusArtifacts.sh
 ├─ src/
+│  ├─ access/
+│  ├─ config/
 │  ├─ interfaces/vestar/
 │  ├─ libraries/vestar/VESTArTypes.sol
 │  ├─ mocks/MockUSDT.sol
 │  └─ vestar/
-│     ├─ election/VESTArElection.sol
-│     ├─ factory/VESTArElectionFactory.sol
-│     └─ registry/
-└─ test/vestar/
+│     ├─ registry/
+│     ├─ factory/
+│     └─ election/
+└─ test/
 ```
 
-### Status Network Target
+### Status Testnet Deployment
 
-Current target network:
-
-- Network: `Status Network Testnet`
-- Chain ID: `1660990954`
-- RPC: `https://public.sepolia.rpc.status.network`
-- EVM version: `paris`
-
-Status integration addresses:
-
-- Karma: `0x7ec5Dc75D09fAbcD55e76077AFa5d4b77D112fde`
-- KarmaTiers: `0xc7fCD786a161f42bDaF66E18a67C767C23cFd30C`
-
-### Current Testnet Deployment
-
-Current deployed addresses are maintained in:
-
-- `abi/status-testnet.addresses.json`
-
-### ABI Handoff
-
-Use the `abi/` folder when handing contracts to frontend or backend teams.
-
-- contract ABIs are exported as plain JSON arrays
-- deployed Status testnet addresses are included in `abi/status-testnet.addresses.json`
-- `abi/README.md` explains which ABI goes to which client use case
-- `script/SyncStatusArtifacts.sh` refreshes the ABI bundle and address manifest from the latest deployment
+| Item | Value |
+| --- | --- |
+| Network | `Status Network Testnet` |
+| Chain ID | `1660990954` |
+| RPC | `https://public.sepolia.rpc.status.network` |
+| EVM | `paris` |
+| OrganizerRegistry | `0x31891950a0B5b289fFdA7478DeaE3CED0FB4c4D5` |
+| KarmaRegistry | `0x09F78697C55C318eABb532f65c03b5E4a5222429` |
+| ElectionImplementation | `0x2604Fe2ae34D4292FE50418303C18aA5bD32Ba83` |
+| VESTArElectionFactory | `0x4173b26b14748fe6342b2c444334095ecB7f0854` |
+| MockUSDT | `0x0cf5032E38C729744953dC44EB0F0e3cC6F21855` |
 
 ### Development
 
@@ -141,7 +220,7 @@ forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
   --priority-gas-price 0
 ```
 
-Deploy MockUSDT only:
+Deploy `MockUSDT` only:
 
 ```bash
 forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
@@ -151,75 +230,164 @@ forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
   --priority-gas-price 0
 ```
 
-### Notes
+Refresh ABI handoff artifacts:
 
-- payment uses ERC20, not native ETH
-- the factory deploys clone instances; users should not interact with the implementation address directly
-- private key reveal is limited to platform admin or delegated reveal managers
-- `seriesId` is for grouping multiple elections under one event screen, not for grouping candidates inside one election
+```bash
+./script/SyncStatusArtifacts.sh
+```
 
 ## 한국어
 
 ### 개요
 
-VESTAr는 K-pop 팬을 위한 투명한 투표 시스템을 제공하는 플랫폼입니다.  
-이 저장소에는 Status Network 위에서 VESTAr 플랫폼을 구동하는 MVP 기준의 실제 스마트 컨트랙트 스택과 테스트, 배포 스크립트, ABI 전달 파일이 들어 있습니다.
+이 저장소는 현재 VESTAr 프론트엔드와 백엔드가 사용하는 온체인 런타임을 담는다.
 
-운영 흐름은 단순합니다.
+- `VESTArOrganizerRegistry`는 organizer profile과 verification 상태를 저장한다.
+- `VESTArKarmaRegistry`는 Status `Karma`, `KarmaTiers`를 읽어 자격 판정을 해석한다.
+- `VESTArElectionFactory`는 organizer 생성 자격을 검증하고 election clone을 배포한다.
+- `VESTArElection`은 lifecycle, eligibility, open vote, private vote, settlement 모듈을 조합한 개별 election 런타임이다.
+- `MockUSDT`는 테스트넷 유료 투표 플로우에 쓰는 6-decimal ERC20이다.
 
-- 백엔드가 election draft와 private election용 암호화 재료를 준비합니다
-- organizer 지갑이 `createElection(config)`를 서명합니다
-- 유저는 자기 지갑으로 ballot을 제출합니다
-- 최종 권위는 항상 체인입니다
+### 컨트랙트 토폴로지
 
-### 구현된 MVP 정책
+```mermaid
+flowchart LR
+  Admin[플랫폼 관리자]
+  Organizer[주최자 지갑]
+  Voter[유권자 지갑]
+  Status[Status Karma + KarmaTiers]
+  OrgReg[VESTArOrganizerRegistry]
+  KarmaReg[VESTArKarmaRegistry]
+  Factory[VESTArElectionFactory]
+  Impl[VESTArElection implementation]
+  MockUSDT[MockUSDT]
+  Worker[backend worker / indexer]
 
-- `VisibilityMode.OPEN`, `VisibilityMode.PRIVATE`
-- `PaymentMode.FREE`, `PaymentMode.PAID`
-- `BallotPolicy.ONE_PER_ELECTION`, `BallotPolicy.ONE_PER_INTERVAL`, `BallotPolicy.UNLIMITED_PAID`
-- `costPerBallot` 기반 ERC20 결제
-- `BallotPolicy.ONE_PER_INTERVAL`일 때만 `resetInterval` 기반 ballot 단위 기간 사용
-- 성공한 트랜잭션 1회 = ballot 1개
-- 다중 선택이어도 비용은 후보 수가 아니라 ballot 1개 기준
-- Open ballot은 중복 후보를 온체인에서 즉시 거절
-- Private ballot은 클라이언트에서 암호화하고 reveal 후 검증
-- `ONE_PER_ELECTION`은 선거 전체에서 1 ballot만 허용하는 모드
-- `UNLIMITED_PAID`는 무제한 유료 단일선택 모드
-- 수익 정산은 platform treasury와 organizer 50:50
-- 홀수 잔차는 organizer 귀속
-- verified organizer는 karma `0`이어도 생성 가능
-- unverified organizer는 karma tier `1` 이상 필요
-- 각 election은 shared `seriesId`를 가지며, 여러 종목 election을 하나의 주관사 이벤트 화면으로 묶을 수 있습니다
+  subgraph Election[VESTArElection clone]
+    Life[Lifecycle]
+    Elig[Eligibility]
+    Open[Open vote]
+    Private[Private vote]
+    Settle[Settlement]
+  end
 
-### 컨트랙트 구조
+  Admin --> OrgReg
+  Admin --> KarmaReg
+  Admin --> Factory
+  Organizer --> OrgReg
+  Organizer --> Factory
+  Status --> KarmaReg
+  OrgReg --> Factory
+  KarmaReg --> Factory
+  Factory -->|clone from| Impl
+  Factory -->|initialize| Election
+  Voter --> Election
+  MockUSDT --> Election
+  Worker --> Election
+```
 
-- `OrganizerRegistry`
-  주최자 프로필, 인증 상태, 생성 가능 여부 관리
-- `KarmaRegistry`
-  Status `Karma`, `KarmaTiers`를 VESTAr 규칙으로 읽는 어댑터
-- `ElectionFactory`
-  organizer 자격을 검증하고 election clone을 만들며 정식 주소를 기록
-- `ElectionImplementation`
-  factory가 clone 배포 시 기준으로 쓰는 템플릿 계약
-- `VESTArElection`
-  유저와 organizer가 실제로 상호작용하는 개별 election 계약
-- `MockUSDT`
-  로컬/테스트넷 유료 투표 플로우용 6 decimals ERC20
+### 런타임 모듈
 
-### 주요 온체인 기능
+| 모듈 | 책임 |
+| --- | --- |
+| `Lifecycle` | 상태 계산, `syncState`, cancel, close, key reveal, finalize |
+| `Eligibility` | karma 검사, ballot period 규칙, 남은 ballot 계산 |
+| `Open vote` | 평문 후보 제출, 중복 선택 차단, 후보 allowlist, 온체인 실시간 tally |
+| `Private vote` | 암호문 제출, 공개키 getter, commitment 기반 reveal 경로 |
+| `Settlement` | ERC20 수납, 50:50 정산, refund |
+| `Factory` | organizer 자격 검증, clone 배포, 정식 `ElectionCreated` 이벤트 발행 |
 
-- 상태 전이:
-  `Scheduled -> Active -> Closed -> KeyRevealPending -> KeyRevealed -> Finalized`
-- Open voting:
-  평문 후보 제출, 온체인 유효성 검사, 실시간 tally
-- Private voting:
-  암호화 ballot 제출, commitment 기반 private key reveal, reveal 후 공개 검증
-- settlement:
-  투표 중 ERC20 수납, 결과 확정 후 최종 분배
-- series grouping:
-  organizer가 여러 종목 election을 만들 때 같은 `seriesId`를 공유시켜 하나의 이벤트 화면으로 묶음
+### 시퀀스: organizer 자격 검증과 election 생성
 
-### 저장소 구조
+```mermaid
+sequenceDiagram
+  actor Organizer as 주최자
+  participant OrgReg as OrganizerRegistry
+  participant KarmaReg as KarmaRegistry
+  participant Factory as ElectionFactory
+  participant Impl as ElectionImplementation
+  participant Election as VESTArElection clone
+
+  Organizer->>OrgReg: upsertOrganizerProfile(...)
+  Organizer->>Factory: createElection(config, initialCandidateHashes)
+  Factory->>OrgReg: isVerified(...) / canCreateElection(...)
+  Factory->>KarmaReg: tierIdOf(...)
+  Factory->>Impl: clone()
+  Factory->>Election: initialize(electionId, config, hashes, organizer, ...)
+  Election-->>Factory: runtime instance 초기화
+  Factory-->>Organizer: tx receipt
+  Factory-->>Organizer: ElectionCreated(seriesId, electionId, electionAddress, ...)
+```
+
+### 시퀀스: ballot 제출
+
+```mermaid
+sequenceDiagram
+  actor Voter as 유권자
+  participant Token as MockUSDT / ERC20
+  participant Election as VESTArElection
+
+  alt OPEN election
+    Voter->>Election: submitOpenVote(candidateKeys)
+    Election->>Election: syncState + canSubmitBallot + allowlist 검사
+    opt paid ballot
+      Election->>Token: transferFrom(voter, election, costPerBallot)
+    end
+    Election->>Election: 후보 tally 증가
+    Election-->>Voter: OpenVoteSubmitted(...)
+  else PRIVATE election
+    Voter->>Election: submitEncryptedVote(encryptedBallot)
+    Election->>Election: syncState + canSubmitBallot + 암호문 존재 여부 검사
+    opt paid ballot
+      Election->>Token: transferFrom(voter, election, costPerBallot)
+    end
+    Election-->>Voter: EncryptedVoteSubmitted(...)
+  end
+```
+
+### 시퀀스: lifecycle, reveal, finalize, settlement
+
+```mermaid
+sequenceDiagram
+  participant Worker as backend worker
+  actor Admin as 플랫폼 관리자 / organizer
+  participant Election as VESTArElection
+  participant Token as ERC20 treasury flow
+
+  Worker->>Election: syncState()
+  Election-->>Worker: Scheduled / Active / Closed / KeyRevealPending / KeyRevealed / Finalized
+
+  alt PRIVATE election and resultRevealAt 경과 후
+    Worker->>Election: revealPrivateKey(privateKeyData)
+    Election-->>Worker: PrivateKeyRevealed + state=KeyRevealed
+  end
+
+  Admin->>Election: finalizeResults(resultSummary)
+  Election-->>Admin: ResultFinalized(...)
+
+  opt paid election and refund 비활성 상태
+    Admin->>Election: settleRevenue()
+    Election->>Token: platform treasury로 50% 전송
+    Election->>Token: organizer로 잔여 50% 전송
+    Election-->>Admin: RevenueSettled(...)
+  end
+```
+
+### 코드상 강제 규칙
+
+- `seriesId`는 0일 수 없다. 초기 candidate hash 목록은 비어 있을 수 없다.
+- config 검증에서 `startAt < endAt`, `resultRevealAt >= endAt`를 강제한다.
+- `FREE` election은 비용이 0이어야 한다. `PAID` election은 토큰 주소와 양수 가격이 필요하다.
+- `PRIVATE` election은 공개키, private-key commitment hash, `keySchemeVersion == 1`을 반드시 설정해야 한다.
+- `ONE_PER_INTERVAL`은 양수 `resetInterval`이 필요하다.
+- `UNLIMITED_PAID`는 단일 선택만 허용하고 현재 `costPerBallot == 66_000`을 강제한다.
+- verified organizer는 karma tier `0`이어도 생성 가능하다. unverified organizer는 tier `1` 이상이 필요하다.
+- open ballot은 온체인에서 중복 후보 선택을 거절한다.
+- `revealPrivateKey(bytes)`는 플랫폼 관리자 또는 위임된 reveal manager만 호출 가능하다.
+- `finalizeResults(...)`는 `OPEN` election에서 `Closed`, `PRIVATE` election에서 `KeyRevealed` 상태를 요구한다.
+- 수익은 50:50으로 분배하며, 홀수 잔차는 organizer에게 귀속한다.
+
+### 저장소 맵
 
 ```text
 contracts/
@@ -236,44 +404,31 @@ contracts/
 │  ├─ DeployVESTArStack.s.sol
 │  └─ SyncStatusArtifacts.sh
 ├─ src/
+│  ├─ access/
+│  ├─ config/
 │  ├─ interfaces/vestar/
 │  ├─ libraries/vestar/VESTArTypes.sol
 │  ├─ mocks/MockUSDT.sol
 │  └─ vestar/
-│     ├─ election/VESTArElection.sol
-│     ├─ factory/VESTArElectionFactory.sol
-│     └─ registry/
-└─ test/vestar/
+│     ├─ registry/
+│     ├─ factory/
+│     └─ election/
+└─ test/
 ```
 
-### Status Network 대상
+### Status Testnet 배포 정보
 
-현재 주요 대상 네트워크:
-
-- 네트워크: `Status Network Testnet`
-- 체인 ID: `1660990954`
-- RPC: `https://public.sepolia.rpc.status.network`
-- EVM version: `paris`
-
-Status 연동 주소:
-
-- Karma: `0x7ec5Dc75D09fAbcD55e76077AFa5d4b77D112fde`
-- KarmaTiers: `0xc7fCD786a161f42bDaF66E18a67C767C23cFd30C`
-
-### 현재 테스트넷 배포 주소
-
-현재 배포 주소는 아래 파일을 기준으로 봅니다.
-
-- `abi/status-testnet.addresses.json`
-
-### ABI 전달
-
-프론트/백에 계약을 넘길 때는 `abi/` 폴더를 사용하면 됩니다.
-
-- ABI는 순수 JSON 배열 형태로 분리되어 있습니다
-- Status testnet 배포 주소는 `abi/status-testnet.addresses.json`에 들어 있습니다
-- 어떤 ABI를 어디에 붙이면 되는지는 `abi/README.md`에 정리돼 있습니다
-- 최신 배포 기준 ABI/주소 갱신은 `script/SyncStatusArtifacts.sh`로 한 번에 처리할 수 있습니다
+| 항목 | 값 |
+| --- | --- |
+| 네트워크 | `Status Network Testnet` |
+| 체인 ID | `1660990954` |
+| RPC | `https://public.sepolia.rpc.status.network` |
+| EVM | `paris` |
+| OrganizerRegistry | `0x31891950a0B5b289fFdA7478DeaE3CED0FB4c4D5` |
+| KarmaRegistry | `0x09F78697C55C318eABb532f65c03b5E4a5222429` |
+| ElectionImplementation | `0x2604Fe2ae34D4292FE50418303C18aA5bD32Ba83` |
+| VESTArElectionFactory | `0x4173b26b14748fe6342b2c444334095ecB7f0854` |
+| MockUSDT | `0x0cf5032E38C729744953dC44EB0F0e3cC6F21855` |
 
 ### 개발
 
@@ -299,7 +454,7 @@ forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
   --priority-gas-price 0
 ```
 
-MockUSDT만 배포:
+`MockUSDT`만 배포:
 
 ```bash
 forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
@@ -309,9 +464,8 @@ forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
   --priority-gas-price 0
 ```
 
-### 메모
+ABI handoff 산출물 갱신:
 
-- 결제는 native ETH가 아니라 ERC20 기준입니다
-- factory는 clone 인스턴스를 생성하므로 implementation 주소를 직접 쓰면 안 됩니다
-- private key reveal은 platform admin 또는 위임된 reveal manager만 가능합니다
-- `seriesId`는 같은 이벤트 안의 여러 election을 묶기 위한 식별자이며, 후보 분류 기능이 아닙니다
+```bash
+./script/SyncStatusArtifacts.sh
+```
