@@ -101,8 +101,8 @@ abstract contract VESTArElectionStorage {
     }
 
     // 단위 기간 관련 코드 :
-    // ONE_PER_ELECTION / UNLIMITED_PAID는 선거 전체를 periodKey 0 하나로 본다.
-    // ONE_PER_INTERVAL만 startAt 기준 resetInterval마다 새 periodKey를 연다.
+    // ONE_PER_ELECTION / UNLIMITED_PAID는 선거 전체를 periodKey 0 하나로 봄
+    // ONE_PER_INTERVAL만 startAt 기준 resetInterval마다 새 periodKey를 엶
     function _currentPeriodKey(uint64 timestamp) internal view returns (uint48) {
         if (_config.ballotPolicy != VESTArTypes.BallotPolicy.ONE_PER_INTERVAL) {
             return 0;

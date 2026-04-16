@@ -1,6 +1,6 @@
 # VESTAr Contracts
 
-Smart-contract stack for organizer gating, clone-based election deployment, open/private voting, and settlement on Status Network Testnet.
+Smart-contract stack for organizer gating, clone-based election deployment, open/private voting, and settlement on Status Network Hoodi Testnet.
 
 ## English
 
@@ -163,7 +163,8 @@ contracts/
 │  ├─ VESTArOrganizerRegistry.json
 │  ├─ VESTArKarmaRegistry.json
 │  ├─ MockUSDT.json
-│  └─ status-testnet.addresses.json
+│  ├─ status-hoodi.addresses.json
+│  └─ status-sepolia.addresses.json
 ├─ script/
 │  ├─ DeployMockUSDT.s.sol
 │  ├─ DeployVESTArFactoryOnly.s.sol
@@ -182,19 +183,29 @@ contracts/
 └─ test/
 ```
 
-### Status Testnet Deployment
+### Status Hoodi Defaults
 
 | Item | Value |
 | --- | --- |
-| Network | `Status Network Testnet` |
-| Chain ID | `1660990954` |
-| RPC | `https://public.sepolia.rpc.status.network` |
+| Network | `Status Network Hoodi Testnet` |
+| Chain ID | `374` |
+| RPC | `https://public.hoodi.rpc.status.network` |
 | EVM | `paris` |
-| OrganizerRegistry | `0x31891950a0B5b289fFdA7478DeaE3CED0FB4c4D5` |
-| KarmaRegistry | `0x09F78697C55C318eABb532f65c03b5E4a5222429` |
-| ElectionImplementation | `0x2604Fe2ae34D4292FE50418303C18aA5bD32Ba83` |
-| VESTArElectionFactory | `0x4173b26b14748fe6342b2c444334095ecB7f0854` |
-| MockUSDT | `0x0cf5032E38C729744953dC44EB0F0e3cC6F21855` |
+| Status Karma | `0x0700be6f329cc48c38144f71c898b72795db6c1b` |
+| Status KarmaTiers | `0xb8039632e089dcefa6bbb1590948926b2463b691` |
+| multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
+
+### Legacy Sepolia Snapshot
+
+The checked-in VESTAr deployment addresses from the deprecated Sepolia testnet are preserved in:
+
+- `abi/status-sepolia.addresses.json`
+
+Generate `abi/status-hoodi.addresses.json` after the first Hoodi redeploy by running:
+
+```bash
+./script/SyncStatusArtifacts.sh
+```
 
 ### Development
 
@@ -210,21 +221,47 @@ Test:
 forge test
 ```
 
-Deploy the full stack:
+Important Foundry profile defaults for VESTAr:
+
+```toml
+[profile.default]
+solc = "0.8.24"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 200
+```
+
+Without `evm_version = "paris"` and optimizer enabled, `VESTArElection` can exceed the EVM contract size limit during deployment.
+
+Deploy the full stack with gasless settings:
 
 ```bash
 forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-  --rpc-url status_testnet \
+  --rpc-url status_hoodi \
   --broadcast \
   --gas-price 0 \
   --priority-gas-price 0
+```
+
+Known Hoodi workaround on 2026-04-16:
+
+If RLN gasless deployment is temporarily unavailable, the following paid deployment command is confirmed to work:
+
+```bash
+forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
+  --rpc-url https://public.hoodi.rpc.status.network \
+  --broadcast \
+  --with-gas-price 200gwei \
+  --priority-gas-price 100gwei \
+  --slow \
+  -vvvv
 ```
 
 Deploy `MockUSDT` only:
 
 ```bash
 forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
-  --rpc-url status_testnet \
+  --rpc-url status_hoodi \
   --broadcast \
   --gas-price 0 \
   --priority-gas-price 0
@@ -397,7 +434,7 @@ contracts/
 │  ├─ VESTArOrganizerRegistry.json
 │  ├─ VESTArKarmaRegistry.json
 │  ├─ MockUSDT.json
-│  └─ status-testnet.addresses.json
+│  └─ status-sepolia.addresses.json
 ├─ script/
 │  ├─ DeployMockUSDT.s.sol
 │  ├─ DeployVESTArFactoryOnly.s.sol
@@ -416,19 +453,29 @@ contracts/
 └─ test/
 ```
 
-### Status Testnet 배포 정보
+### Status Hoodi 기본값
 
 | 항목 | 값 |
 | --- | --- |
-| 네트워크 | `Status Network Testnet` |
-| 체인 ID | `1660990954` |
-| RPC | `https://public.sepolia.rpc.status.network` |
+| 네트워크 | `Status Network Hoodi Testnet` |
+| 체인 ID | `374` |
+| RPC | `https://public.hoodi.rpc.status.network` |
 | EVM | `paris` |
-| OrganizerRegistry | `0x31891950a0B5b289fFdA7478DeaE3CED0FB4c4D5` |
-| KarmaRegistry | `0x09F78697C55C318eABb532f65c03b5E4a5222429` |
-| ElectionImplementation | `0x2604Fe2ae34D4292FE50418303C18aA5bD32Ba83` |
-| VESTArElectionFactory | `0x4173b26b14748fe6342b2c444334095ecB7f0854` |
-| MockUSDT | `0x0cf5032E38C729744953dC44EB0F0e3cC6F21855` |
+| Status Karma | `0x0700be6f329cc48c38144f71c898b72795db6c1b` |
+| Status KarmaTiers | `0xb8039632e089dcefa6bbb1590948926b2463b691` |
+| multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
+
+### 레거시 Sepolia 스냅샷
+
+종료 예정인 Sepolia 테스트넷의 마지막 VESTAr 배포 주소는 아래 파일로 보존했습니다.
+
+- `abi/status-sepolia.addresses.json`
+
+Hoodi에 다시 배포한 뒤 아래 명령으로 `abi/status-hoodi.addresses.json`를 생성하면 됩니다.
+
+```bash
+./script/SyncStatusArtifacts.sh
+```
 
 ### 개발
 
@@ -448,7 +495,7 @@ forge test
 
 ```bash
 forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-  --rpc-url status_testnet \
+  --rpc-url status_hoodi \
   --broadcast \
   --gas-price 0 \
   --priority-gas-price 0
@@ -458,7 +505,7 @@ forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
 
 ```bash
 forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
-  --rpc-url status_testnet \
+  --rpc-url status_hoodi \
   --broadcast \
   --gas-price 0 \
   --priority-gas-price 0
