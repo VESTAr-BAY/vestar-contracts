@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHAIN_ID="${CHAIN_ID:-1660990954}"
+CHAIN_ID="${CHAIN_ID:-374}"
 BROADCAST_PATH="${BROADCAST_PATH:-$ROOT_DIR/broadcast/DeployVESTArStack.s.sol/$CHAIN_ID/run-latest.json}"
 ABI_DIR="$ROOT_DIR/abi"
 
@@ -46,11 +46,11 @@ ELECTION_IMPLEMENTATION="$(checksum_address "$(address_of "VESTArElection")")"
 ELECTION_FACTORY="$(checksum_address "$(address_of "VESTArElectionFactory")")"
 MOCK_USDT="$(checksum_address "$(address_of "MockUSDT")")"
 
-cat > "$ABI_DIR/status-testnet.addresses.json" <<JSON
+cat > "$ABI_DIR/status-hoodi.addresses.json" <<JSON
 {
-  "chainName": "Status Network Testnet",
-  "chainId": 1660990954,
-  "rpcUrl": "https://public.sepolia.rpc.status.network",
+  "chainName": "Status Network Hoodi Testnet",
+  "chainId": 374,
+  "rpcUrl": "https://public.hoodi.rpc.status.network",
   "OrganizerRegistry": "$ORGANIZER_REGISTRY",
   "KarmaRegistry": "$KARMA_REGISTRY",
   "ElectionImplementation": "$ELECTION_IMPLEMENTATION",
@@ -59,5 +59,5 @@ cat > "$ABI_DIR/status-testnet.addresses.json" <<JSON
 }
 JSON
 
-echo "synced ABI bundle and status testnet addresses from:"
+echo "synced ABI bundle and status hoodi addresses from:"
 echo "  $BROADCAST_PATH"

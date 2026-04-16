@@ -8,4 +8,5 @@ optimizer = true
 optimizer_runs = 200
 
 [rpc_endpoints]
-status_testnet = "https://public.sepolia.rpc.status.network"
+status_hoodi = "https://public.hoodi.rpc.status.network"
+status_testnet = "https://public.hoodi.rpc.status.network"

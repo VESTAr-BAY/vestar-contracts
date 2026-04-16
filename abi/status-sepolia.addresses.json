@@ -1,5 +1,5 @@
 {
-  "chainName": "Status Network Testnet",
+  "chainName": "Status Network Sepolia Testnet",
   "chainId": 1660990954,
   "rpcUrl": "https://public.sepolia.rpc.status.network",
   "OrganizerRegistry": "0x31891950a0B5b289fFdA7478DeaE3CED0FB4c4D5",

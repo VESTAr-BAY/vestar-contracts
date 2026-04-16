@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {MockUSDT} from "../src/mocks/MockUSDT.sol";
-import {StatusTestnetConfig} from "../src/config/StatusTestnetConfig.sol";
+import {StatusHoodiConfig} from "../src/config/StatusHoodiConfig.sol";
 import {VESTArElection} from "../src/vestar/election/VESTArElection.sol";
 import {VESTArElectionFactory} from "../src/vestar/factory/VESTArElectionFactory.sol";
 import {VESTArKarmaRegistry} from "../src/vestar/registry/VESTArKarmaRegistry.sol";
@@ -18,7 +18,7 @@ import {VESTArOrganizerRegistry} from "../src/vestar/registry/VESTArOrganizerReg
 //
 // 사용 예시 :
 // PRIVATE_KEY=... PLATFORM_TREASURY=0x... forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-//   --rpc-url status_testnet --broadcast --gas-price 0 --priority-gas-price 0 -vvvv
+//   --rpc-url status_hoodi --broadcast --gas-price 0 --priority-gas-price 0 -vvvv
 contract DeployVESTArStackScript is Script {
     function run()
         external
@@ -35,11 +35,11 @@ contract DeployVESTArStackScript is Script {
 
         // 환경변수 관련 코드 :
         // PLATFORM_TREASURY를 따로 안 넣으면 배포자 주소를 임시 treasury로 사용
-        // Status Karma 원본 주소는 env로 덮어쓸 수 있고, 없으면 testnet 기본값을 사용
+        // Status Karma 원본 주소는 Hoodi 기본값을 고정 사용
         address initialOwner = vm.envOr("INITIAL_OWNER", deployer);
         address platformTreasury = vm.envOr("PLATFORM_TREASURY", deployer);
-        address statusKarma = vm.envOr("STATUS_KARMA", StatusTestnetConfig.KARMA);
-        address statusKarmaTiers = vm.envOr("STATUS_KARMA_TIERS", StatusTestnetConfig.KARMA_TIERS);
+        address statusKarma = StatusHoodiConfig.KARMA;
+        address statusKarmaTiers = StatusHoodiConfig.KARMA_TIERS;
         bool deployMockUsdt = vm.envOr("DEPLOY_MOCK_USDT", true);
 
         vm.startBroadcast(privateKey);
@@ -70,7 +70,7 @@ contract DeployVESTArStackScript is Script {
         console2.log("ElectionFactory:", address(electionFactory));
         console2.log("Factory implementation reference:", electionFactory.electionImplementation());
         console2.log("MockUSDT:", address(mockUsdt));
-        console2.log("Status Karma source:", statusKarma);
-        console2.log("Status KarmaTiers source:", statusKarmaTiers);
+        console2.log("Status Hoodi Karma source:", statusKarma);
+        console2.log("Status Hoodi KarmaTiers source:", statusKarmaTiers);
     }
 }

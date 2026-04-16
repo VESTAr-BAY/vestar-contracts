@@ -9,7 +9,7 @@ import {VESTArElectionFactory} from "../src/vestar/factory/VESTArElectionFactory
 // Status L2처럼 nonce 응답이 흔들릴 때는 "레지스트리 배포"와 "팩토리 배포"를 분리하면 재시도가 쉬움
 // 사용 예시 :
 // PRIVATE_KEY=... ORGANIZER_REGISTRY=0x... KARMA_REGISTRY=0x... forge script script/DeployVESTArFactoryOnly.s.sol:DeployVESTArFactoryOnlyScript \
-//   --rpc-url status_testnet --broadcast --slow --gas-price 0 --priority-gas-price 0 -vvvv
+//   --rpc-url status_hoodi --broadcast --slow --gas-price 0 --priority-gas-price 0 -vvvv
 contract DeployVESTArFactoryOnlyScript is Script {
     function run() external returns (VESTArElectionFactory electionFactory, VESTArElection electionImplementation) {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");

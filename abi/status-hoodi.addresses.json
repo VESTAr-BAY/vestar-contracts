@@ -1,0 +1,10 @@
+{
+  "chainName": "Status Network Hoodi Testnet",
+  "chainId": 374,
+  "rpcUrl": "https://public.hoodi.rpc.status.network",
+  "OrganizerRegistry": "0x7B866EA62C48F8Cb1FdACd94AA1035B0FBfC07Bd",
+  "KarmaRegistry": "0xdf22b1F368a22AEbc1909A6755301bBf45673793",
+  "ElectionImplementation": "0x7b1E2a5e73b7ab00161e60BF63FF87df1A7adeF3",
+  "VESTArElectionFactory": "0xC0A7FCbf4Fa5E9E10aE554d4532021152D8B3E7F",
+  "MockUSDT": "0x3E1a693D32a9Cc4274193710B42B0B78Fd8FDd6d"
+}

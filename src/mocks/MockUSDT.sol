@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-// mockUSDT 테스트 토큰 계약
+// mockUSDT 테스트 토큰
 // 실서비스 스테이블코인이 아니라, 로컬/테스트넷에서 ballot 결제 흐름을 검증하기 위한 토큰
 //  ERC20을 상속하면 transfer / approve / transferFrom 같은 기본 기능을 바로 쓸 수 있음
 contract MockUSDT is ERC20 {
