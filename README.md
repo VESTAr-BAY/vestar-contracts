@@ -1,518 +1,220 @@
+<p align="center">
+  <img src="./readme_img/app logo.svg" alt="VESTAr logo" width="280" />
+</p>
+
+<p align="center">
+  <img src="./readme_img/app icon.png" alt="VESTAr app icon" width="92" />
+</p>
+
 # VESTAr Contracts
 
-Smart-contract stack for organizer gating, clone-based election deployment, open/private voting, and settlement on Status Network Hoodi Testnet.
+Smart contracts for VESTAr's organizer gating, clone-based election deployment, open/private voting, and paid settlement on Status Network.
 
-## English
+<p align="center">
+  <a href="https://github.com/VESTAr-BAY/vestar-frontend">Frontend</a>
+  ·
+  <a href="https://github.com/VESTAr-BAY/vestar-backend">Backend</a>
+  ·
+  <a href="https://boisterous-sfogliatella-3e55f2.netlify.app/vote/">Live Demo</a>
+</p>
 
-### Overview
+## Related Repositories
 
-This repository contains the current VESTAr on-chain runtime used by the frontend and backend.
+| Repository | How it connects to this contracts repo |
+| --- | --- |
+| [`vestar-contracts`](https://github.com/VESTAr-BAY/vestar-contracts) | Core onchain runtime for election creation, voting, reveal, and settlement |
+| [`vestar-frontend`](https://github.com/VESTAr-BAY/vestar-frontend) | Host flows, voting UI, and verification portal built on top of these contracts |
+| [`vestar-backend`](https://github.com/VESTAr-BAY/vestar-backend) | Indexed read APIs, private vote preparation, and automated key reveal workers |
 
-- `VESTArOrganizerRegistry` stores organizer profile data and verification state.
-- `VESTArKarmaRegistry` reads Status `Karma` and `KarmaTiers` and translates eligibility.
-- `VESTArElectionFactory` validates organizer eligibility and deploys election clones.
-- `VESTArElection` is the per-election runtime assembled from lifecycle, eligibility, open vote, private vote, and settlement modules.
-- `MockUSDT` is the 6-decimal ERC20 used for paid-vote flows on testnet.
+## Overview
 
-### Contract Topology
+**English**  
+This repository contains the onchain core of VESTAr. It is responsible for deciding who can create elections, how votes are accepted, how private voting is revealed, and how paid voting revenue is settled. The design is modular, but the top-level experience is simple: registries gate creation, the factory deploys election clones, and each election handles its own lifecycle.
+
+**한국어**  
+이 저장소는 VESTAr의 온체인 핵심 로직을 담고 있습니다. 누가 투표를 생성할 수 있는지, 투표가 어떤 방식으로 제출되는지, 비공개 투표가 언제 공개되는지, 유료 투표 수익이 어떻게 정산되는지를 이 저장소가 결정합니다. 구조는 모듈형이지만 흐름은 단순합니다. 레지스트리가 생성 자격을 판단하고, 팩토리가 election clone을 배포하며, 각 election 인스턴스가 자신의 생명주기를 직접 관리하는 방식입니다.
+
+## Key Features
+
+**English**
+
+- Organizer verification and creation gating through onchain registries.
+- Clone-based election deployment for consistent runtime behavior.
+- Support for both open voting and private encrypted voting.
+- Commitment-verified private key reveal for verifiable private results.
+- Paid voting settlement with an ERC20-based revenue split.
+
+**한국어**
+
+- 온체인 레지스트리를 통한 주최자 검증과 생성 자격 관리 구조입니다.
+- 일관된 동작을 위한 clone 기반 election 배포 구조입니다.
+- 공개 투표와 비공개 암호화 투표를 모두 지원합니다.
+- 비공개 결과 검증을 위한 commitment-verified key reveal 구조입니다.
+- ERC20 기반 수익 분배를 포함한 유료 투표 정산 구조입니다.
+
+<p align="center">
+  <img src="./readme_img/Visibility.png" alt="Visibility modes" width="31%" />
+  <img src="./readme_img/Ballot Policy.png" alt="Ballot policies" width="31%" />
+  <img src="./readme_img/Payment.png" alt="Payment modes" width="31%" />
+</p>
+
+## Architecture
+
+**English**  
+At a high level, VESTAr contracts are organized around three layers: registries, factory, and election instances. Registries provide organizer and karma context, the factory enforces creation rules and deploys clones, and each deployed election handles voting, reveal, finalization, and settlement.
+
+**한국어**  
+큰 흐름에서 VESTAr 컨트랙트는 레지스트리, 팩토리, election 인스턴스의 세 층으로 구성되어 있습니다. 레지스트리는 주최자와 카르마 정보를 제공하고, 팩토리는 생성 규칙을 검증한 뒤 clone을 배포하며, 실제 election 인스턴스는 투표, 공개, 최종 확정, 정산을 담당합니다.
 
 ```mermaid
 flowchart LR
-  Admin[Platform admin]
-  Organizer[Organizer wallet]
-  Voter[Voter wallet]
-  Status[Status Karma + KarmaTiers]
-  OrgReg[VESTArOrganizerRegistry]
-  KarmaReg[VESTArKarmaRegistry]
-  Factory[VESTArElectionFactory]
-  Impl[VESTArElection implementation]
-  MockUSDT[MockUSDT]
-  Worker[Backend workers / indexer]
-
-  subgraph Election[VESTArElection clone]
-    Life[Lifecycle]
-    Elig[Eligibility]
-    Open[Open vote]
-    Private[Private vote]
-    Settle[Settlement]
-  end
-
-  Admin --> OrgReg
-  Admin --> KarmaReg
-  Admin --> Factory
-  Organizer --> OrgReg
-  Organizer --> Factory
-  Status --> KarmaReg
-  OrgReg --> Factory
+  Admin[Admin / Organizer] --> OrgReg[OrganizerRegistry]
+  Status[Status Karma] --> KarmaReg[KarmaRegistry]
+  OrgReg --> Factory[ElectionFactory]
   KarmaReg --> Factory
-  Factory -->|clone from| Impl
-  Factory -->|initialize| Election
-  Voter --> Election
-  MockUSDT --> Election
-  Worker --> Election
+  Factory --> Election[VESTArElection clone]
+  Voter[Voter] --> Election
+  Worker[Backend worker / indexer] --> Election
+  Token[MockUSDT / ERC20] --> Election
 ```
 
-### Runtime Modules
+<p align="center">
+  <img src="./readme_img/Architecture.png" alt="VESTAr contracts architecture" width="88%" />
+</p>
 
-| Module | Responsibility |
+## Contract Suite
+
+| Contract | Role |
 | --- | --- |
-| `Lifecycle` | State calculation, `syncState`, cancel, close, key reveal, finalize |
-| `Eligibility` | Karma checks, ballot-period rules, remaining ballot calculation |
-| `Open vote` | Plaintext candidate submission, duplicate detection, candidate allowlist, live on-chain tallies |
-| `Private vote` | Ciphertext submission, public key getters, commitment-based reveal path |
-| `Settlement` | ERC20 collection, 50:50 revenue split, refunds |
-| `Factory` | Organizer eligibility checks, clone deployment, canonical `ElectionCreated` event |
+| `VESTArOrganizerRegistry` | Stores organizer profile data and verification state |
+| `VESTArKarmaRegistry` | Reads Status Karma and KarmaTiers for eligibility checks |
+| `VESTArElectionFactory` | Validates organizer eligibility and deploys election clones |
+| `VESTArElection` | Per-election runtime covering lifecycle, voting, reveal, and settlement |
+| `MockUSDT` | 6-decimal ERC20 used for paid vote flows on testnet |
 
-### Sequence: Organizer Eligibility And Election Creation
+**English**  
+If you want implementation-level detail, the internal contract map is documented in [`src/vestar/README.md`](./src/vestar/README.md).
 
-```mermaid
-sequenceDiagram
-  actor Organizer
-  participant OrgReg as OrganizerRegistry
-  participant KarmaReg as KarmaRegistry
-  participant Factory as ElectionFactory
-  participant Impl as ElectionImplementation
-  participant Election as VESTArElection clone
+**한국어**  
+구현 단위의 더 자세한 구조가 필요하면 [`src/vestar/README.md`](./src/vestar/README.md)에서 내부 폴더와 모듈 구성을 확인할 수 있습니다.
 
-  Organizer->>OrgReg: upsertOrganizerProfile(...)
-  Organizer->>Factory: createElection(config, initialCandidateHashes)
-  Factory->>OrgReg: isVerified(...) / canCreateElection(...)
-  Factory->>KarmaReg: tierIdOf(...)
-  Factory->>Impl: clone()
-  Factory->>Election: initialize(electionId, config, hashes, organizer, ...)
-  Election-->>Factory: initialized runtime instance
-  Factory-->>Organizer: tx receipt
-  Factory-->>Organizer: ElectionCreated(seriesId, electionId, electionAddress, ...)
-```
+## Election Lifecycle
 
-### Sequence: Ballot Submission
+**English**  
+Open and private elections share the same broad lifecycle, but private elections add a reveal step before finalization. That reveal step is what allows temporary privacy during voting and verifiability afterward.
+
+**한국어**  
+공개 투표와 비공개 투표는 큰 생명주기를 공유하지만, 비공개 투표는 최종 확정 전에 key reveal 단계가 한 번 더 들어갑니다. 이 단계 덕분에 진행 중에는 프라이버시를 유지하고, 종료 후에는 결과를 다시 검증할 수 있습니다.
 
 ```mermaid
-sequenceDiagram
-  actor Voter
-  participant Token as MockUSDT / ERC20
-  participant Election as VESTArElection
-
-  alt OPEN election
-    Voter->>Election: submitOpenVote(candidateKeys)
-    Election->>Election: syncState + canSubmitBallot + allowlist checks
-    opt paid ballot
-      Election->>Token: transferFrom(voter, election, costPerBallot)
-    end
-    Election->>Election: increment candidate tallies
-    Election-->>Voter: OpenVoteSubmitted(...)
-  else PRIVATE election
-    Voter->>Election: submitEncryptedVote(encryptedBallot)
-    Election->>Election: syncState + canSubmitBallot + ciphertext presence check
-    opt paid ballot
-      Election->>Token: transferFrom(voter, election, costPerBallot)
-    end
-    Election-->>Voter: EncryptedVoteSubmitted(...)
-  end
+flowchart LR
+  Scheduled --> Active --> Closed
+  Closed --> Finalized
+  Closed --> KeyRevealPending
+  KeyRevealPending --> KeyRevealed --> Finalized
+  Finalized --> Settled
 ```
 
-### Sequence: Lifecycle, Reveal, Finalize, Settlement
+## On-Chain Rules
 
-```mermaid
-sequenceDiagram
-  participant Worker as backend workers
-  actor Admin as platform admin / organizer
-  participant Election as VESTArElection
-  participant Token as ERC20 treasury flow
+**English**
 
-  Worker->>Election: syncState()
-  Election-->>Worker: Scheduled / Active / Closed / KeyRevealPending / KeyRevealed / Finalized
+- `startAt < endAt` and `resultRevealAt >= endAt` are validated onchain.
+- `FREE` elections require zero cost, while `PAID` elections require a token and a positive price.
+- `PRIVATE` elections require a public key, a commitment hash, and `keySchemeVersion == 1`.
+- `ONE_PER_INTERVAL` requires a positive reset interval.
+- `UNLIMITED_PAID` is single-choice only and currently enforces `costPerBallot == 66_000`.
+- `finalizeResults(...)` requires the correct terminal state before execution.
 
-  alt PRIVATE election after resultRevealAt
-    Worker->>Election: revealPrivateKey(privateKeyData)
-    Election-->>Worker: PrivateKeyRevealed + state=KeyRevealed
-  end
+**한국어**
 
-  Admin->>Election: finalizeResults(resultSummary)
-  Election-->>Admin: ResultFinalized(...)
+- `startAt < endAt`, `resultRevealAt >= endAt` 규칙을 온체인에서 검증합니다.
+- `FREE` election은 비용이 0이어야 하고, `PAID` election은 토큰 주소와 양수 가격이 필요합니다.
+- `PRIVATE` election은 공개키, 커밋 해시, `keySchemeVersion == 1` 조건이 필요합니다.
+- `ONE_PER_INTERVAL`은 양수 reset interval이 필요합니다.
+- `UNLIMITED_PAID`는 단일 선택만 허용하며 현재 `costPerBallot == 66_000`을 강제합니다.
+- `finalizeResults(...)`는 올바른 종료 상태에 도달한 뒤에만 실행할 수 있습니다.
 
-  opt paid election and no refunds
-    Admin->>Election: settleRevenue()
-    Election->>Token: transfer 50% to platform treasury
-    Election->>Token: transfer 50% remainder to organizer
-    Election-->>Admin: RevenueSettled(...)
-  end
-```
-
-### On-Chain Rules Checked In Code
-
-- `seriesId` must be non-zero and the initial candidate hash list must be non-empty.
-- `startAt < endAt` and `resultRevealAt >= endAt` are enforced in config validation.
-- `FREE` elections must use zero cost. `PAID` elections must set a token address and positive price.
-- `PRIVATE` elections must set a public key, a private-key commitment hash, and `keySchemeVersion == 1`.
-- `ONE_PER_INTERVAL` requires a positive `resetInterval`.
-- `UNLIMITED_PAID` is single-choice only and currently hard-checks `costPerBallot == 66_000`.
-- Verified organizers can create elections with karma tier `0`. Unverified organizers need tier `>= 1`.
-- Open ballots reject duplicate candidate selections on-chain.
-- `revealPrivateKey(bytes)` is restricted to the platform admin or delegated reveal managers.
-- `finalizeResults(...)` requires `Closed` for `OPEN` elections and `KeyRevealed` for `PRIVATE` elections.
-- Revenue splits 50:50, with odd remainder flowing to the organizer.
-
-### Repository Map
+## Repository Layout
 
 ```text
 contracts/
-├─ abi/
-│  ├─ VESTArElection.json
-│  ├─ VESTArElectionFactory.json
-│  ├─ VESTArOrganizerRegistry.json
-│  ├─ VESTArKarmaRegistry.json
-│  ├─ MockUSDT.json
-│  ├─ status-hoodi.addresses.json
-│  └─ status-sepolia.addresses.json
-├─ script/
-│  ├─ DeployMockUSDT.s.sol
-│  ├─ DeployVESTArFactoryOnly.s.sol
-│  ├─ DeployVESTArStack.s.sol
-│  └─ SyncStatusArtifacts.sh
+├─ abi/                    # ABI handoff artifacts and deployment address snapshots
+├─ script/                 # Foundry deployment and sync scripts
 ├─ src/
-│  ├─ access/
-│  ├─ config/
-│  ├─ interfaces/vestar/
-│  ├─ libraries/vestar/VESTArTypes.sol
-│  ├─ mocks/MockUSDT.sol
-│  └─ vestar/
-│     ├─ registry/
-│     ├─ factory/
-│     └─ election/
-└─ test/
+│  ├─ config/              # Network-specific constants
+│  ├─ interfaces/          # Public interfaces
+│  ├─ mocks/               # MockUSDT and test helpers
+│  └─ vestar/              # Registries, factory, and election runtime
+├─ test/                   # Foundry test suite
+└─ foundry.toml
 ```
 
-### Status Hoodi Defaults
+## Quick Start
+
+### Build
+
+```bash
+forge build
+```
+
+### Test
+
+```bash
+forge test
+```
+
+### Deploy the Full Stack
+
+```bash
+forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
+  --rpc-url status_hoodi \
+  --broadcast \
+  --gas-price 0 \
+  --priority-gas-price 0
+```
+
+### Deploy MockUSDT Only
+
+```bash
+forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
+  --rpc-url status_hoodi \
+  --broadcast \
+  --gas-price 0 \
+  --priority-gas-price 0
+```
+
+### Refresh ABI Artifacts
+
+```bash
+./script/SyncStatusArtifacts.sh
+```
+
+## Network Defaults
 
 | Item | Value |
 | --- | --- |
 | Network | `Status Network Hoodi Testnet` |
 | Chain ID | `374` |
 | RPC | `https://public.hoodi.rpc.status.network` |
-| EVM | `paris` |
+| EVM Version | `paris` |
+| Solidity | `0.8.24` |
 | Status Karma | `0x0700be6f329cc48c38144f71c898b72795db6c1b` |
 | Status KarmaTiers | `0xb8039632e089dcefa6bbb1590948926b2463b691` |
-| multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
+| Multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
 
-### Legacy Sepolia Snapshot
+## Development Notes
 
-The checked-in VESTAr deployment addresses from the deprecated Sepolia testnet are preserved in:
+**English**  
+The current Foundry profile uses Solidity `0.8.24`, `evm_version = "paris"`, and optimizer settings tuned for deployment size. This matters because the assembled election runtime can become large without those defaults.
 
-- `abi/status-sepolia.addresses.json`
+**한국어**  
+현재 Foundry 설정은 Solidity `0.8.24`, `evm_version = "paris"`, optimizer 활성화를 기준으로 맞춰져 있습니다. 이는 election 런타임이 여러 기능을 조합하는 구조이기 때문에, 이 기본값이 맞지 않으면 배포 크기 제한에 걸릴 수 있기 때문입니다.
 
-Generate `abi/status-hoodi.addresses.json` after the first Hoodi redeploy by running:
+## Notice
 
-```bash
-./script/SyncStatusArtifacts.sh
-```
+**English**  
+If gasless deployment is temporarily unavailable on Status Hoodi, deployment may require explicit gas settings instead of the expected zero-gas flow.
 
-### Development
-
-Build:
-
-```bash
-forge build
-```
-
-Test:
-
-```bash
-forge test
-```
-
-Important Foundry profile defaults for VESTAr:
-
-```toml
-[profile.default]
-solc = "0.8.24"
-evm_version = "paris"
-optimizer = true
-optimizer_runs = 200
-```
-
-Without `evm_version = "paris"` and optimizer enabled, `VESTArElection` can exceed the EVM contract size limit during deployment.
-
-Deploy the full stack with gasless settings:
-
-```bash
-forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-  --rpc-url status_hoodi \
-  --broadcast \
-  --gas-price 0 \
-  --priority-gas-price 0
-```
-
-Known Hoodi workaround on 2026-04-16:
-
-If RLN gasless deployment is temporarily unavailable, the following paid deployment command is confirmed to work:
-
-```bash
-forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-  --rpc-url https://public.hoodi.rpc.status.network \
-  --broadcast \
-  --with-gas-price 200gwei \
-  --priority-gas-price 100gwei \
-  --slow \
-  -vvvv
-```
-
-Deploy `MockUSDT` only:
-
-```bash
-forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
-  --rpc-url status_hoodi \
-  --broadcast \
-  --gas-price 0 \
-  --priority-gas-price 0
-```
-
-Refresh ABI handoff artifacts:
-
-```bash
-./script/SyncStatusArtifacts.sh
-```
-
-## 한국어
-
-### 개요
-
-이 저장소는 현재 VESTAr 프론트엔드와 백엔드가 사용하는 온체인 런타임을 담는다.
-
-- `VESTArOrganizerRegistry`는 organizer profile과 verification 상태를 저장한다.
-- `VESTArKarmaRegistry`는 Status `Karma`, `KarmaTiers`를 읽어 자격 판정을 해석한다.
-- `VESTArElectionFactory`는 organizer 생성 자격을 검증하고 election clone을 배포한다.
-- `VESTArElection`은 lifecycle, eligibility, open vote, private vote, settlement 모듈을 조합한 개별 election 런타임이다.
-- `MockUSDT`는 테스트넷 유료 투표 플로우에 쓰는 6-decimal ERC20이다.
-
-### 컨트랙트 토폴로지
-
-```mermaid
-flowchart LR
-  Admin[플랫폼 관리자]
-  Organizer[주최자 지갑]
-  Voter[유권자 지갑]
-  Status[Status Karma + KarmaTiers]
-  OrgReg[VESTArOrganizerRegistry]
-  KarmaReg[VESTArKarmaRegistry]
-  Factory[VESTArElectionFactory]
-  Impl[VESTArElection implementation]
-  MockUSDT[MockUSDT]
-  Worker[backend worker / indexer]
-
-  subgraph Election[VESTArElection clone]
-    Life[Lifecycle]
-    Elig[Eligibility]
-    Open[Open vote]
-    Private[Private vote]
-    Settle[Settlement]
-  end
-
-  Admin --> OrgReg
-  Admin --> KarmaReg
-  Admin --> Factory
-  Organizer --> OrgReg
-  Organizer --> Factory
-  Status --> KarmaReg
-  OrgReg --> Factory
-  KarmaReg --> Factory
-  Factory -->|clone from| Impl
-  Factory -->|initialize| Election
-  Voter --> Election
-  MockUSDT --> Election
-  Worker --> Election
-```
-
-### 런타임 모듈
-
-| 모듈 | 책임 |
-| --- | --- |
-| `Lifecycle` | 상태 계산, `syncState`, cancel, close, key reveal, finalize |
-| `Eligibility` | karma 검사, ballot period 규칙, 남은 ballot 계산 |
-| `Open vote` | 평문 후보 제출, 중복 선택 차단, 후보 allowlist, 온체인 실시간 tally |
-| `Private vote` | 암호문 제출, 공개키 getter, commitment 기반 reveal 경로 |
-| `Settlement` | ERC20 수납, 50:50 정산, refund |
-| `Factory` | organizer 자격 검증, clone 배포, 정식 `ElectionCreated` 이벤트 발행 |
-
-### 시퀀스: organizer 자격 검증과 election 생성
-
-```mermaid
-sequenceDiagram
-  actor Organizer as 주최자
-  participant OrgReg as OrganizerRegistry
-  participant KarmaReg as KarmaRegistry
-  participant Factory as ElectionFactory
-  participant Impl as ElectionImplementation
-  participant Election as VESTArElection clone
-
-  Organizer->>OrgReg: upsertOrganizerProfile(...)
-  Organizer->>Factory: createElection(config, initialCandidateHashes)
-  Factory->>OrgReg: isVerified(...) / canCreateElection(...)
-  Factory->>KarmaReg: tierIdOf(...)
-  Factory->>Impl: clone()
-  Factory->>Election: initialize(electionId, config, hashes, organizer, ...)
-  Election-->>Factory: runtime instance 초기화
-  Factory-->>Organizer: tx receipt
-  Factory-->>Organizer: ElectionCreated(seriesId, electionId, electionAddress, ...)
-```
-
-### 시퀀스: ballot 제출
-
-```mermaid
-sequenceDiagram
-  actor Voter as 유권자
-  participant Token as MockUSDT / ERC20
-  participant Election as VESTArElection
-
-  alt OPEN election
-    Voter->>Election: submitOpenVote(candidateKeys)
-    Election->>Election: syncState + canSubmitBallot + allowlist 검사
-    opt paid ballot
-      Election->>Token: transferFrom(voter, election, costPerBallot)
-    end
-    Election->>Election: 후보 tally 증가
-    Election-->>Voter: OpenVoteSubmitted(...)
-  else PRIVATE election
-    Voter->>Election: submitEncryptedVote(encryptedBallot)
-    Election->>Election: syncState + canSubmitBallot + 암호문 존재 여부 검사
-    opt paid ballot
-      Election->>Token: transferFrom(voter, election, costPerBallot)
-    end
-    Election-->>Voter: EncryptedVoteSubmitted(...)
-  end
-```
-
-### 시퀀스: lifecycle, reveal, finalize, settlement
-
-```mermaid
-sequenceDiagram
-  participant Worker as backend worker
-  actor Admin as 플랫폼 관리자 / organizer
-  participant Election as VESTArElection
-  participant Token as ERC20 treasury flow
-
-  Worker->>Election: syncState()
-  Election-->>Worker: Scheduled / Active / Closed / KeyRevealPending / KeyRevealed / Finalized
-
-  alt PRIVATE election and resultRevealAt 경과 후
-    Worker->>Election: revealPrivateKey(privateKeyData)
-    Election-->>Worker: PrivateKeyRevealed + state=KeyRevealed
-  end
-
-  Admin->>Election: finalizeResults(resultSummary)
-  Election-->>Admin: ResultFinalized(...)
-
-  opt paid election and refund 비활성 상태
-    Admin->>Election: settleRevenue()
-    Election->>Token: platform treasury로 50% 전송
-    Election->>Token: organizer로 잔여 50% 전송
-    Election-->>Admin: RevenueSettled(...)
-  end
-```
-
-### 코드상 강제 규칙
-
-- `seriesId`는 0일 수 없다. 초기 candidate hash 목록은 비어 있을 수 없다.
-- config 검증에서 `startAt < endAt`, `resultRevealAt >= endAt`를 강제한다.
-- `FREE` election은 비용이 0이어야 한다. `PAID` election은 토큰 주소와 양수 가격이 필요하다.
-- `PRIVATE` election은 공개키, private-key commitment hash, `keySchemeVersion == 1`을 반드시 설정해야 한다.
-- `ONE_PER_INTERVAL`은 양수 `resetInterval`이 필요하다.
-- `UNLIMITED_PAID`는 단일 선택만 허용하고 현재 `costPerBallot == 66_000`을 강제한다.
-- verified organizer는 karma tier `0`이어도 생성 가능하다. unverified organizer는 tier `1` 이상이 필요하다.
-- open ballot은 온체인에서 중복 후보 선택을 거절한다.
-- `revealPrivateKey(bytes)`는 플랫폼 관리자 또는 위임된 reveal manager만 호출 가능하다.
-- `finalizeResults(...)`는 `OPEN` election에서 `Closed`, `PRIVATE` election에서 `KeyRevealed` 상태를 요구한다.
-- 수익은 50:50으로 분배하며, 홀수 잔차는 organizer에게 귀속한다.
-
-### 저장소 맵
-
-```text
-contracts/
-├─ abi/
-│  ├─ VESTArElection.json
-│  ├─ VESTArElectionFactory.json
-│  ├─ VESTArOrganizerRegistry.json
-│  ├─ VESTArKarmaRegistry.json
-│  ├─ MockUSDT.json
-│  └─ status-sepolia.addresses.json
-├─ script/
-│  ├─ DeployMockUSDT.s.sol
-│  ├─ DeployVESTArFactoryOnly.s.sol
-│  ├─ DeployVESTArStack.s.sol
-│  └─ SyncStatusArtifacts.sh
-├─ src/
-│  ├─ access/
-│  ├─ config/
-│  ├─ interfaces/vestar/
-│  ├─ libraries/vestar/VESTArTypes.sol
-│  ├─ mocks/MockUSDT.sol
-│  └─ vestar/
-│     ├─ registry/
-│     ├─ factory/
-│     └─ election/
-└─ test/
-```
-
-### Status Hoodi 기본값
-
-| 항목 | 값 |
-| --- | --- |
-| 네트워크 | `Status Network Hoodi Testnet` |
-| 체인 ID | `374` |
-| RPC | `https://public.hoodi.rpc.status.network` |
-| EVM | `paris` |
-| Status Karma | `0x0700be6f329cc48c38144f71c898b72795db6c1b` |
-| Status KarmaTiers | `0xb8039632e089dcefa6bbb1590948926b2463b691` |
-| multicall3 | `0xcA11bde05977b3631167028862bE2a173976CA11` |
-
-### 레거시 Sepolia 스냅샷
-
-종료 예정인 Sepolia 테스트넷의 마지막 VESTAr 배포 주소는 아래 파일로 보존했습니다.
-
-- `abi/status-sepolia.addresses.json`
-
-Hoodi에 다시 배포한 뒤 아래 명령으로 `abi/status-hoodi.addresses.json`를 생성하면 됩니다.
-
-```bash
-./script/SyncStatusArtifacts.sh
-```
-
-### 개발
-
-빌드:
-
-```bash
-forge build
-```
-
-테스트:
-
-```bash
-forge test
-```
-
-전체 스택 배포:
-
-```bash
-forge script script/DeployVESTArStack.s.sol:DeployVESTArStackScript \
-  --rpc-url status_hoodi \
-  --broadcast \
-  --gas-price 0 \
-  --priority-gas-price 0
-```
-
-`MockUSDT`만 배포:
-
-```bash
-forge script script/DeployMockUSDT.s.sol:DeployMockUSDTScript \
-  --rpc-url status_hoodi \
-  --broadcast \
-  --gas-price 0 \
-  --priority-gas-price 0
-```
-
-ABI handoff 산출물 갱신:
-
-```bash
-./script/SyncStatusArtifacts.sh
-```
+**한국어**  
+Status Hoodi에서 가스리스 배포가 일시적으로 동작하지 않는 경우에는, 기대했던 zero-gas 흐름 대신 명시적인 gas 설정으로 배포해야 할 수 있습니다.
