@@ -15,7 +15,9 @@ Smart contracts for VESTAr's organizer gating, clone-based election deployment, 
   ·
   <a href="https://github.com/VESTAr-BAY/vestar-backend">Backend</a>
   ·
-  <a href="https://boisterous-sfogliatella-3e55f2.netlify.app/vote/">Live Demo</a>
+  <a href="https://www.youtube.com/watch?v=QpLsSmcpIjw">Demo Video</a>
+  ·
+  <a href="https://regal-weather-603.notion.site/Project-Description-3466dc69e5dc8015b7acf9ae8784a01c?pvs=73">Project Description</a>
 </p>
 
 ## Related Repositories
